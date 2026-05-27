@@ -1,6 +1,7 @@
 "use client";
 
 import { useTelemetryStore } from "@/stores/telemetryStore";
+import { isSentinelTelemetry } from "@/lib/sentinel";
 import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
 
 interface Props {
@@ -16,8 +17,12 @@ const EMPTY: never[] = [];
 
 export function TelemetryGraph({ driverNumber, field, color, label, unit, domain }: Props) {
   const buffer = useTelemetryStore((s) => s.buffers.get(driverNumber)) ?? EMPTY;
-  const data = buffer.map((f, i) => ({ i, v: f[field] ?? 0 }));
-  const latest = buffer[buffer.length - 1]?.[field];
+  const data = buffer.map((f, i) => ({
+    i,
+    v: isSentinelTelemetry(f) ? null : (f[field] ?? null),
+  }));
+  const latestFrame = buffer[buffer.length - 1];
+  const latest = isSentinelTelemetry(latestFrame) ? null : latestFrame?.[field];
 
   return (
     <div className="rounded-lg border border-white/5 bg-black/40 p-3">
@@ -47,6 +52,7 @@ export function TelemetryGraph({ driverNumber, field, color, label, unit, domain
               strokeWidth={1.5}
               fill={`url(#g-${field})`}
               isAnimationActive={false}
+              connectNulls={false}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -58,8 +64,9 @@ export function TelemetryGraph({ driverNumber, field, color, label, unit, domain
 export function GearDrsPanel({ driverNumber }: { driverNumber: number }) {
   const buffer = useTelemetryStore((s) => s.buffers.get(driverNumber)) ?? EMPTY;
   const latest = buffer[buffer.length - 1];
-  const gear = latest?.n_gear ?? null;
-  const drs = latest?.drs ?? null;
+  const sentinel = isSentinelTelemetry(latest);
+  const gear = sentinel ? null : latest?.n_gear ?? null;
+  const drs = sentinel ? null : latest?.drs ?? null;
   const drsActive = drs != null && drs >= 10;
 
   return (

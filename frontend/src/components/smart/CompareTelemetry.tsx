@@ -1,6 +1,7 @@
 "use client";
 
 import { useTelemetryStore } from "@/stores/telemetryStore";
+import { isSentinelTelemetry } from "@/lib/sentinel";
 import type { TelemetryFrame } from "@/lib/types";
 import {
   Area,
@@ -42,14 +43,18 @@ export function CompareTelemetryRow({
   for (let i = 0; i < len; i++) {
     const fa = bufA[bufA.length - len + i];
     const fb = bufB[bufB.length - len + i];
+    const aVal = !fa || isSentinelTelemetry(fa) ? null : Number(fa[field] ?? null);
+    const bVal = !fb || isSentinelTelemetry(fb) ? null : Number(fb[field] ?? null);
     data.push({
       i,
-      a: fa ? Number(fa[field] ?? null) : null,
-      b: fb ? Number(fb[field] ?? null) : null,
+      a: Number.isFinite(aVal as number) ? (aVal as number) : null,
+      b: Number.isFinite(bVal as number) ? (bVal as number) : null,
     });
   }
-  const latestA = bufA[bufA.length - 1]?.[field];
-  const latestB = bufB[bufB.length - 1]?.[field];
+  const fA = bufA[bufA.length - 1];
+  const fB = bufB[bufB.length - 1];
+  const latestA = isSentinelTelemetry(fA) ? null : fA?.[field];
+  const latestB = isSentinelTelemetry(fB) ? null : fB?.[field];
 
   return (
     <div className="rounded-lg border border-white/5 bg-black/40 p-3">

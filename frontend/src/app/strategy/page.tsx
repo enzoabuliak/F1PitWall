@@ -6,6 +6,7 @@ import { ReplayBanner } from "@/components/atoms/ReplayBanner";
 import { Panel } from "@/components/atoms/Panel";
 import { StrategyTimeline } from "@/components/smart/StrategyTimeline";
 import { StrategyStats } from "@/components/smart/StrategyStats";
+import { StrategyAdvisor } from "@/components/smart/StrategyAdvisor";
 
 export default function StrategyPage() {
   useLiveData();
@@ -13,10 +14,15 @@ export default function StrategyPage() {
     <div className="flex flex-col min-h-screen">
       <SessionHeader />
       <ReplayBanner />
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 p-4">
-        <Panel title="Tire Strategy · Stint Timeline" accent>
-          <StrategyTimeline />
-        </Panel>
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 p-4">
+        <div className="space-y-4">
+          <Panel title="Tire Strategy · Stint Timeline" accent>
+            <StrategyTimeline />
+          </Panel>
+          <Panel title="Strategy Advisor" accent>
+            <StrategyAdvisor />
+          </Panel>
+        </div>
         <div className="space-y-4">
           <Panel title="Race Strategy Stats">
             <StrategyStats />
