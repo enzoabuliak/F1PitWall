@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #e0e0e0;
+  --ferrari: #dc0000;
+  --led: #00ff9c;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ferrari: var(--ferrari);
+  --color-led: var(--led);
+  --font-mono: ui-monospace, "JetBrains Mono", "SF Mono", Monaco, Menlo, monospace;
+}
+
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(220, 0, 0, 0.08), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 100%, rgba(0, 255, 156, 0.04), transparent 60%),
+    #0a0a0a;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0a0a0a; }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #DC0000; }
