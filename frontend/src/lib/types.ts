@@ -80,6 +80,54 @@ export interface Team {
   drivers: TeamDriver[];
 }
 
+export interface RaceSessions {
+  fp1: string | null;
+  fp2: string | null;
+  fp3: string | null;
+  qualifying: string | null;
+  sprint: string | null;
+  race: string | null;
+}
+
+export interface ScheduleRace {
+  round: number;
+  race_name: string;
+  circuit_name: string | null;
+  circuit_id: string | null;
+  country: string | null;
+  locality: string | null;
+  date: string | null;
+  time: string | null;
+  race_start: string | null;
+  sessions: RaceSessions;
+}
+
+export interface ScheduleResponse {
+  year: number;
+  now: string;
+  schedule: ScheduleRace[];
+  next_race: ScheduleRace | null;
+  last_race: ScheduleRace | null;
+}
+
+export interface RaceResult {
+  position: number;
+  driver_code: string | null;
+  full_name: string;
+  team_name: string | null;
+  points: number;
+  status: string | null;
+  time: string | null;
+}
+
+export interface LastRaceResults {
+  race_name: string;
+  circuit: string | null;
+  country: string | null;
+  date: string | null;
+  results: RaceResult[];
+}
+
 export interface TelemetryFrame {
   driver_number: number;
   timestamp: number;

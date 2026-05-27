@@ -2,7 +2,9 @@ import type {
   ConstructorStanding,
   DriverPosition,
   DriverStanding,
+  LastRaceResults,
   RaceState,
+  ScheduleResponse,
   Team,
   TelemetryFrame,
   Weather,
@@ -43,4 +45,12 @@ export async function fetchDriverStandings(): Promise<{ year: number; standings:
 
 export async function fetchConstructorStandings(): Promise<{ year: number; standings: ConstructorStanding[] }> {
   return getJSON("/api/championship/constructors");
+}
+
+export async function fetchSchedule(): Promise<ScheduleResponse> {
+  return getJSON("/api/championship/schedule");
+}
+
+export async function fetchLastRace(): Promise<LastRaceResults> {
+  return getJSON("/api/championship/last-race");
 }

@@ -8,6 +8,7 @@ import { SessionHeader } from "@/components/smart/SessionHeader";
 import { DriverSelect } from "@/components/smart/DriverSelect";
 import { TelemetryGraph, GearDrsPanel } from "@/components/smart/TelemetryGraph";
 import { Panel } from "@/components/atoms/Panel";
+import { ReplayBanner } from "@/components/atoms/ReplayBanner";
 
 export default function TelemetryPage() {
   useLiveData();
@@ -20,6 +21,7 @@ export default function TelemetryPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <SessionHeader />
+      <ReplayBanner />
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 p-4">
         <Panel title="Drivers">
           <DriverSelect />

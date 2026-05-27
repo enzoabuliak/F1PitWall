@@ -42,3 +42,27 @@ async def last_race(request: Request, year: Optional[int] = None):
     if not result:
         raise HTTPException(status_code=404, detail="No race results available")
     return result
+
+
+@router.get("/schedule")
+async def schedule(request: Request, year: Optional[int] = None):
+    if year is None:
+        race_state = await request.app.state.cache.get("race:state") or {}
+        year = race_state.get("year") or datetime.now(timezone.utc).year
+    rows = await request.app.state.ergast.season_schedule(year)
+    now = datetime.now(timezone.utc).isoformat()
+    next_race = None
+    last_race_row = None
+    for r in rows:
+        rs = r.get("race_start")
+        if rs and rs > now and next_race is None:
+            next_race = r
+        if rs and rs <= now:
+            last_race_row = r
+    return {
+        "year": year,
+        "now": now,
+        "schedule": rows,
+        "next_race": next_race,
+        "last_race": last_race_row,
+    }

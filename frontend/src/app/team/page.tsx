@@ -7,6 +7,7 @@ import { SessionHeader } from "@/components/smart/SessionHeader";
 import { TeamPicker } from "@/components/smart/TeamPicker";
 import { TeamDriverCard } from "@/components/smart/TeamDriverCard";
 import { Panel } from "@/components/atoms/Panel";
+import { ReplayBanner } from "@/components/atoms/ReplayBanner";
 import type { DriverStanding } from "@/lib/types";
 
 function findStanding(
@@ -49,6 +50,7 @@ export default function TeamPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <SessionHeader />
+      <ReplayBanner />
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 p-4">
         <div className="space-y-4">
           <Panel title={`Teams${year ? ` · ${year}` : ""}`}>

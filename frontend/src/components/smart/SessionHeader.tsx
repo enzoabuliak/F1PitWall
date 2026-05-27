@@ -7,7 +7,7 @@ import { useTimingStore } from "@/stores/timingStore";
 import { cn } from "@/lib/cn";
 
 const NAV = [
-  { href: "/", label: "Race" },
+  { href: "/", label: "Home" },
   { href: "/telemetry", label: "Telemetry" },
   { href: "/team", label: "Team" },
 ];

@@ -78,6 +78,17 @@ class ErgastService:
             await self.cache.set(cache_key, result, RACE_RESULTS_CACHE_TTL)
         return result
 
+    async def season_schedule(self, year: int) -> List[Dict[str, Any]]:
+        cache_key = f"ergast:schedule:{year}"
+        cached = await self.cache.get(cache_key)
+        if cached is not None:
+            return cached
+        data = await self._get(f"/{year}")
+        rows = _extract_schedule(data)
+        if rows:
+            await self.cache.set(cache_key, rows, RACE_RESULTS_CACHE_TTL)
+        return rows
+
 
 def _extract_driver_standings(data: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
     if not data:
@@ -130,6 +141,51 @@ def _extract_constructor_standings(data: Optional[Dict[str, Any]]) -> List[Dict[
         return rows
     except (KeyError, TypeError, ValueError) as e:
         log.warning("ergast constructor parse failed: %s", e)
+        return []
+
+
+def _combine_date_time(date: Optional[str], time: Optional[str]) -> Optional[str]:
+    if not date:
+        return None
+    if not time:
+        return f"{date}T00:00:00Z"
+    return f"{date}T{time}"
+
+
+def _extract_schedule(data: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    if not data:
+        return []
+    try:
+        races = data["MRData"]["RaceTable"]["Races"]
+        out = []
+        for r in races:
+            circuit = r.get("Circuit") or {}
+            location = circuit.get("Location") or {}
+            sessions = {
+                "fp1": _combine_date_time((r.get("FirstPractice") or {}).get("date"), (r.get("FirstPractice") or {}).get("time")),
+                "fp2": _combine_date_time((r.get("SecondPractice") or {}).get("date"), (r.get("SecondPractice") or {}).get("time")),
+                "fp3": _combine_date_time((r.get("ThirdPractice") or {}).get("date"), (r.get("ThirdPractice") or {}).get("time")),
+                "qualifying": _combine_date_time((r.get("Qualifying") or {}).get("date"), (r.get("Qualifying") or {}).get("time")),
+                "sprint": _combine_date_time((r.get("Sprint") or {}).get("date"), (r.get("Sprint") or {}).get("time")),
+                "race": _combine_date_time(r.get("date"), r.get("time")),
+            }
+            out.append(
+                {
+                    "round": int(r.get("round", 0)),
+                    "race_name": r.get("raceName"),
+                    "circuit_name": circuit.get("circuitName"),
+                    "circuit_id": circuit.get("circuitId"),
+                    "country": location.get("country"),
+                    "locality": location.get("locality"),
+                    "date": r.get("date"),
+                    "time": r.get("time"),
+                    "race_start": sessions["race"],
+                    "sessions": sessions,
+                }
+            )
+        return out
+    except (KeyError, TypeError, ValueError) as e:
+        log.warning("ergast schedule parse failed: %s", e)
         return []
 
 
