@@ -25,7 +25,19 @@ The screenshots and walkthrough below were captured during the
 ```
 backend/   FastAPI + aiohttp polling layer over OpenF1 + Ergast
 frontend/  Next.js 16 (App Router) + Zustand + Framer Motion + Recharts
+desktop/   Native macOS .app — tiny Swift WKWebView shell around the live URL
 ```
+
+## Run as a native macOS app
+
+```bash
+cd desktop
+./build.sh
+open "dist/F1 Pit Wall.app"
+```
+
+Produces a ~250 KB universal `.app` (arm64 + x86_64). See `desktop/README.md`
+for menus, keyboard shortcuts, and how to point it at a local dev server.
 
 ### Backend (`backend/`)
 
