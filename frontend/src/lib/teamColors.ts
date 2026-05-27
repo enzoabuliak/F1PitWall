@@ -9,9 +9,10 @@
  */
 
 export const TEAM_COLORS: Record<string, string> = {
-  // Ferrari red
-  "ferrari": "#ED1131",
-  "scuderia ferrari": "#ED1131",
+  // Ferrari red — matches the F1 PIT WALL accent / logo red so the
+  // brand reads as one across the whole UI.
+  "ferrari": "#DC0000",
+  "scuderia ferrari": "#DC0000",
 
   // Mercedes petronas turquoise
   "mercedes": "#00D7B6",
