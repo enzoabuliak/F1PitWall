@@ -15,6 +15,8 @@ const NAV = [
   { href: "/telemetry", label: "Telemetry" },
   { href: "/team", label: "Team" },
   { href: "/compare", label: "Compare" },
+  { href: "/constructors", label: "Constructors" },
+  { href: "/history", label: "History" },
 ];
 
 const STATUS_LABEL: Record<string, { label: string; color: string; dot: string }> = {

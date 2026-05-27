@@ -89,6 +89,115 @@ class ErgastService:
             await self.cache.set(cache_key, result, RACE_RESULTS_CACHE_TTL)
         return result
 
+    async def available_seasons(self) -> List[int]:
+        cache_key = "ergast:seasons"
+        cached = await self.cache.get(cache_key)
+        if cached is not None:
+            return cached
+        years: List[int] = []
+        for offset in (0, 100):
+            data = await self._get(f"/seasons?limit=100&offset={offset}")
+            try:
+                rows = data["MRData"]["SeasonTable"]["Seasons"] if data else []
+            except (KeyError, TypeError):
+                rows = []
+            for r in rows:
+                try:
+                    years.append(int(r.get("season")))
+                except (ValueError, TypeError):
+                    pass
+            if len(rows) < 100:
+                break
+        years.sort(reverse=True)
+        await self.cache.set(cache_key, years, 86400)
+        return years
+
+    async def season_winners(self, year: int) -> List[Dict[str, Any]]:
+        cache_key = f"ergast:winners:{year}"
+        cached = await self.cache.get(cache_key)
+        if cached is not None:
+            return cached
+        data = await self._get(f"/{year}/results/1?limit=100")
+        rows: List[Dict[str, Any]] = []
+        try:
+            races = data["MRData"]["RaceTable"]["Races"] if data else []
+        except (KeyError, TypeError):
+            races = []
+        for r in races:
+            circuit = r.get("Circuit") or {}
+            location = circuit.get("Location") or {}
+            results = r.get("Results") or []
+            winner = results[0] if results else {}
+            driver = winner.get("Driver") or {}
+            constructor = winner.get("Constructor") or {}
+            rows.append(
+                {
+                    "round": int(r.get("round", 0)),
+                    "race_name": r.get("raceName"),
+                    "circuit": circuit.get("circuitName"),
+                    "country": location.get("country"),
+                    "date": r.get("date"),
+                    "winner_full_name": f"{driver.get('givenName', '')} {driver.get('familyName', '')}".strip() or None,
+                    "winner_code": driver.get("code"),
+                    "winner_constructor": constructor.get("name"),
+                    "winner_time": (winner.get("Time") or {}).get("time"),
+                }
+            )
+        rows.sort(key=lambda x: x.get("round") or 0)
+        if rows:
+            await self.cache.set(cache_key, rows, 86400)
+        return rows
+
+    async def all_season_results(self, year: int) -> List[Dict[str, Any]]:
+        """Per-round constructor points for the line chart."""
+        cache_key = f"ergast:allresults:{year}"
+        cached = await self.cache.get(cache_key)
+        if cached is not None:
+            return cached
+        data = await self._get(f"/{year}/results?limit=1000")
+        try:
+            races = data["MRData"]["RaceTable"]["Races"] if data else []
+        except (KeyError, TypeError):
+            races = []
+        rounds: List[Dict[str, Any]] = []
+        for r in races:
+            results = r.get("Results") or []
+            row = {
+                "round": int(r.get("round", 0)),
+                "race_name": r.get("raceName"),
+                "country": ((r.get("Circuit") or {}).get("Location") or {}).get("country"),
+                "date": r.get("date"),
+                "constructor_points": {},
+                "constructor_wins": {},
+                "constructor_podiums": {},
+            }
+            for res in results:
+                constructor = (res.get("Constructor") or {}).get("name")
+                if not constructor:
+                    continue
+                try:
+                    pts = float(res.get("points") or 0)
+                except (ValueError, TypeError):
+                    pts = 0.0
+                row["constructor_points"][constructor] = (
+                    row["constructor_points"].get(constructor, 0.0) + pts
+                )
+                try:
+                    position = int(res.get("position") or 0)
+                except (ValueError, TypeError):
+                    position = 0
+                if position == 1:
+                    row["constructor_wins"][constructor] = 1
+                if 1 <= position <= 3:
+                    row["constructor_podiums"][constructor] = (
+                        row["constructor_podiums"].get(constructor, 0) + 1
+                    )
+            rounds.append(row)
+        rounds.sort(key=lambda x: x.get("round") or 0)
+        if rounds:
+            await self.cache.set(cache_key, rounds, 86400)
+        return rounds
+
     async def season_schedule(self, year: int) -> List[Dict[str, Any]]:
         cache_key = f"ergast:schedule:{year}"
         cached = await self.cache.get(cache_key)

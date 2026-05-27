@@ -4,6 +4,8 @@ import type {
   LastRaceResults,
   QualifyingSession,
   ScheduleResponse,
+  SeasonRoundResults,
+  SeasonWinner,
 } from "../types";
 import { memo } from "./cache";
 
@@ -127,6 +129,91 @@ export async function getSchedule(year: number): Promise<ScheduleResponse> {
       if (r.race_start && r.race_start <= now) last_race = r;
     }
     return { year, now, schedule, next_race, last_race };
+  });
+}
+
+export async function getAvailableSeasons(): Promise<number[]> {
+  return memo("ergast:seasons", 86400, async () => {
+    const years: number[] = [];
+    for (const offset of [0, 100]) {
+      const data = await get<ErgastResponse<"SeasonTable", { Seasons: Array<Record<string, string>> }>>(
+        `/seasons?limit=100&offset=${offset}`,
+      );
+      const rows = data?.MRData?.SeasonTable?.Seasons ?? [];
+      for (const r of rows) {
+        const y = parseInt(r.season ?? "", 10);
+        if (!Number.isNaN(y)) years.push(y);
+      }
+      if (rows.length < 100) break;
+    }
+    years.sort((a, b) => b - a);
+    return years;
+  });
+}
+
+export async function getSeasonWinners(year: number): Promise<SeasonWinner[]> {
+  return memo(`ergast:winners:${year}`, 86400, async () => {
+    const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }>>(
+      `/${year}/results/1?limit=100`,
+    );
+    const races = data?.MRData?.RaceTable?.Races ?? [];
+    const rows: SeasonWinner[] = races.map((r) => {
+      const circuit = (r.Circuit ?? {}) as Record<string, unknown>;
+      const location = (circuit.Location ?? {}) as Record<string, string>;
+      const results = ((r.Results ?? []) as Array<Record<string, unknown>>)[0] ?? {};
+      const driver = (results.Driver ?? {}) as Record<string, string>;
+      const constructor = (results.Constructor ?? {}) as Record<string, string>;
+      const timeObj = (results.Time ?? {}) as Record<string, string>;
+      return {
+        round: parseInt(String(r.round ?? 0), 10),
+        race_name: (r.raceName as string) ?? null,
+        circuit: (circuit.circuitName as string) ?? null,
+        country: location.country ?? null,
+        date: (r.date as string) ?? null,
+        winner_full_name:
+          `${driver.givenName ?? ""} ${driver.familyName ?? ""}`.trim() || null,
+        winner_code: driver.code ?? null,
+        winner_constructor: constructor.name ?? null,
+        winner_time: timeObj.time ?? null,
+      };
+    });
+    rows.sort((a, b) => a.round - b.round);
+    return rows;
+  });
+}
+
+export async function getAllSeasonResults(year: number): Promise<SeasonRoundResults[]> {
+  return memo(`ergast:allresults:${year}`, 86400, async () => {
+    const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }>>(
+      `/${year}/results?limit=1000`,
+    );
+    const races = data?.MRData?.RaceTable?.Races ?? [];
+    const rounds: SeasonRoundResults[] = races.map((r) => {
+      const results = (r.Results ?? []) as Array<Record<string, unknown>>;
+      const points: Record<string, number> = {};
+      const wins: Record<string, number> = {};
+      const podiums: Record<string, number> = {};
+      for (const res of results) {
+        const constructor = ((res.Constructor ?? {}) as Record<string, string>).name;
+        if (!constructor) continue;
+        const pts = parseFloat(String(res.points ?? 0));
+        points[constructor] = (points[constructor] ?? 0) + (Number.isFinite(pts) ? pts : 0);
+        const pos = parseInt(String(res.position ?? 0), 10);
+        if (pos === 1) wins[constructor] = 1;
+        if (pos >= 1 && pos <= 3) podiums[constructor] = (podiums[constructor] ?? 0) + 1;
+      }
+      return {
+        round: parseInt(String(r.round ?? 0), 10),
+        race_name: (r.raceName as string) ?? null,
+        country: (((r.Circuit ?? {}) as Record<string, unknown>).Location as Record<string, string> | undefined)?.country ?? null,
+        date: (r.date as string) ?? null,
+        constructor_points: points,
+        constructor_wins: wins,
+        constructor_podiums: podiums,
+      };
+    });
+    rounds.sort((a, b) => a.round - b.round);
+    return rounds;
   });
 }
 

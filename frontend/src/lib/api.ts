@@ -6,6 +6,8 @@ import type {
   QualifyingSession,
   RaceState,
   ScheduleResponse,
+  SeasonRoundResults,
+  SeasonWinner,
   StrategyResponse,
   Team,
   TelemetryFrame,
@@ -91,6 +93,40 @@ export async function fetchTrackMap(): Promise<TrackMap | null> {
     return await getJSON<TrackMap>("/api/track/map");
   } catch {
     return null;
+  }
+}
+
+export async function fetchAvailableSeasons(): Promise<number[]> {
+  if (USE_STATIC) return ergast.getAvailableSeasons();
+  try {
+    const d = await getJSON<{ seasons: number[] }>("/api/championship/seasons");
+    return d.seasons;
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchSeasonWinners(year: number): Promise<SeasonWinner[]> {
+  if (USE_STATIC) return ergast.getSeasonWinners(year);
+  try {
+    const d = await getJSON<{ year: number; winners: SeasonWinner[] }>(
+      `/api/championship/winners/${year}`,
+    );
+    return d.winners;
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchAllSeasonResults(year: number): Promise<SeasonRoundResults[]> {
+  if (USE_STATIC) return ergast.getAllSeasonResults(year);
+  try {
+    const d = await getJSON<{ year: number; rounds: SeasonRoundResults[] }>(
+      `/api/championship/all-results/${year}`,
+    );
+    return d.rounds;
+  } catch {
+    return [];
   }
 }
 

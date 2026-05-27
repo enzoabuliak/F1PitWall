@@ -44,6 +44,24 @@ async def last_race(request: Request, year: Optional[int] = None):
     return result
 
 
+@router.get("/seasons")
+async def seasons(request: Request):
+    years = await request.app.state.ergast.available_seasons()
+    return {"seasons": years}
+
+
+@router.get("/winners/{year}")
+async def winners(year: int, request: Request):
+    rows = await request.app.state.ergast.season_winners(year)
+    return {"year": year, "winners": rows}
+
+
+@router.get("/all-results/{year}")
+async def all_results(year: int, request: Request):
+    rows = await request.app.state.ergast.all_season_results(year)
+    return {"year": year, "rounds": rows}
+
+
 @router.get("/last-qualifying")
 async def last_qualifying(request: Request, year: Optional[int] = None):
     if year is None:

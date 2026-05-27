@@ -199,6 +199,28 @@ export interface QualifyingSession {
   results: QualifyingResult[];
 }
 
+export interface SeasonWinner {
+  round: number;
+  race_name: string | null;
+  circuit: string | null;
+  country: string | null;
+  date: string | null;
+  winner_full_name: string | null;
+  winner_code: string | null;
+  winner_constructor: string | null;
+  winner_time: string | null;
+}
+
+export interface SeasonRoundResults {
+  round: number;
+  race_name: string | null;
+  country: string | null;
+  date: string | null;
+  constructor_points: Record<string, number>;
+  constructor_wins?: Record<string, number>;
+  constructor_podiums?: Record<string, number>;
+}
+
 export interface TelemetryFrame {
   driver_number: number;
   timestamp: number;
