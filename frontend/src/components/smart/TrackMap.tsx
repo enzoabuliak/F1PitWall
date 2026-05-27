@@ -6,6 +6,8 @@ import type { TrackMap as TrackMapData } from "@/lib/types";
 
 interface Props {
   refreshMs?: number;
+  highlightDriver?: number | null;
+  compact?: boolean;
 }
 
 const PADDING = 60;
@@ -30,7 +32,7 @@ function project(
   return [x, y];
 }
 
-export function TrackMap({ refreshMs = 4000 }: Props) {
+export function TrackMap({ refreshMs = 4000, highlightDriver = null, compact = false }: Props) {
   const [data, setData] = useState<TrackMapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,10 +142,48 @@ export function TrackMap({ refreshMs = 4000 }: Props) {
         {data.positions.map((p) => {
           const [x, y] = project([p.x, p.y], data.outline.bounds);
           const fill = p.team_colour ? `#${p.team_colour}` : "#888";
+          const isHighlighted = highlightDriver != null && highlightDriver === p.driver_number;
+          const dim = highlightDriver != null && !isHighlighted;
+          const r = isHighlighted ? 10 : 7;
           return (
-            <g key={p.driver_number} className="transition-transform">
-              <circle cx={x} cy={y} r={11} fill={fill} opacity={0.5} filter="url(#car-glow)" />
-              <circle cx={x} cy={y} r={7} fill={fill} stroke="white" strokeWidth={1.2} />
+            <g
+              key={p.driver_number}
+              opacity={dim ? 0.35 : 1}
+              className="transition-opacity"
+            >
+              {isHighlighted && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={20}
+                  fill="none"
+                  stroke="#DC0000"
+                  strokeWidth={2}
+                  opacity={0.6}
+                >
+                  <animate
+                    attributeName="r"
+                    values="16;26;16"
+                    dur="1.6s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    values="0.7;0.1;0.7"
+                    dur="1.6s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+              )}
+              <circle cx={x} cy={y} r={r + 4} fill={fill} opacity={0.5} filter="url(#car-glow)" />
+              <circle
+                cx={x}
+                cy={y}
+                r={r}
+                fill={fill}
+                stroke={isHighlighted ? "#fff" : "white"}
+                strokeWidth={isHighlighted ? 2 : 1.2}
+              />
               <text
                 x={x}
                 y={y + 3}
@@ -155,10 +195,10 @@ export function TrackMap({ refreshMs = 4000 }: Props) {
               >
                 {p.driver_number}
               </text>
-              {p.name_acronym && (
+              {(p.name_acronym && (!compact || isHighlighted)) && (
                 <text
                   x={x}
-                  y={y - 14}
+                  y={y - r - 6}
                   textAnchor="middle"
                   fontSize="9"
                   fontFamily="ui-monospace, SFMono-Regular, monospace"

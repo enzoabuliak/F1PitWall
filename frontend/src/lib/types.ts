@@ -211,6 +211,49 @@ export interface SeasonWinner {
   winner_time: string | null;
 }
 
+export type FlagState =
+  | "GREEN"
+  | "YELLOW"
+  | "DOUBLE_YELLOW"
+  | "RED"
+  | "SC"
+  | "VSC"
+  | "CHEQUERED";
+
+export interface RaceControlOverall {
+  state: FlagState;
+  label: string;
+  since: string | null;
+}
+
+export interface RaceControlMessage {
+  date: string | null;
+  category: string | null;
+  flag: string | null;
+  scope: string | null;
+  sector: number | null;
+  lap_number: number | null;
+  message: string | null;
+  driver_number: number | null;
+  driver_acronym: string | null;
+}
+
+export interface RaceControlResponse {
+  session_key: number;
+  overall: RaceControlOverall;
+  messages: RaceControlMessage[];
+}
+
+export interface DriverDrs {
+  drs: number | null;
+  open: boolean;
+}
+
+export interface DrsResponse {
+  session_key: number;
+  drs: Record<string, DriverDrs>;
+}
+
 export interface SeasonRoundResults {
   round: number;
   race_name: string | null;

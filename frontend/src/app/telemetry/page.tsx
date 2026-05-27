@@ -7,6 +7,8 @@ import { useTimingStore } from "@/stores/timingStore";
 import { SessionHeader } from "@/components/smart/SessionHeader";
 import { DriverSelect } from "@/components/smart/DriverSelect";
 import { TelemetryGraph, GearDrsPanel } from "@/components/smart/TelemetryGraph";
+import { TrackMap } from "@/components/smart/TrackMap";
+import { FlagStrip } from "@/components/smart/FlagStrip";
 import { Panel } from "@/components/atoms/Panel";
 import { ReplayBanner } from "@/components/atoms/ReplayBanner";
 
@@ -21,11 +23,19 @@ export default function TelemetryPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <SessionHeader />
+      <FlagStrip />
       <ReplayBanner />
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 p-4">
-        <Panel title="Drivers">
-          <DriverSelect />
-        </Panel>
+        <div className="space-y-4">
+          <Panel title="Drivers">
+            <DriverSelect />
+          </Panel>
+          {selected && (
+            <Panel title="Track position">
+              <TrackMap refreshMs={4000} highlightDriver={selected} compact />
+            </Panel>
+          )}
+        </div>
         <div className="space-y-4">
           <Panel
             title={driver ? `Telemetry · ${driver.full_name}` : "Telemetry"}

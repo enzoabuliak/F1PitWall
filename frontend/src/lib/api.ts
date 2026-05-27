@@ -2,8 +2,10 @@ import type {
   ConstructorStanding,
   DriverPosition,
   DriverStanding,
+  DrsResponse,
   LastRaceResults,
   QualifyingSession,
+  RaceControlResponse,
   RaceState,
   ScheduleResponse,
   SeasonRoundResults,
@@ -134,6 +136,24 @@ export async function fetchLastQualifying(): Promise<QualifyingSession | null> {
   if (USE_STATIC) return ergast.getLastQualifying(await currentYear());
   try {
     return await getJSON<QualifyingSession>("/api/championship/last-qualifying");
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchRaceControl(): Promise<RaceControlResponse | null> {
+  if (USE_STATIC) return openf1.getRaceControl();
+  try {
+    return await getJSON<RaceControlResponse>("/api/live/race-control");
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchDrs(): Promise<DrsResponse | null> {
+  if (USE_STATIC) return openf1.getDrs();
+  try {
+    return await getJSON<DrsResponse>("/api/live/drs");
   } catch {
     return null;
   }

@@ -2,6 +2,7 @@
 
 import { TimingTower } from "@/components/smart/TimingTower";
 import { WeatherWidget } from "@/components/smart/WeatherWidget";
+import { RaceControlPanel } from "@/components/smart/RaceControlPanel";
 import { Panel } from "@/components/atoms/Panel";
 
 export function LiveDashboard() {
@@ -14,10 +15,8 @@ export function LiveDashboard() {
         <Panel title="Weather">
           <WeatherWidget />
         </Panel>
-        <Panel title="Pit Wall">
-          <div className="text-xs text-neutral-400 leading-relaxed font-mono">
-            Streaming live OpenF1 data. Click any driver row to select for telemetry inspection.
-          </div>
+        <Panel title="Race Control">
+          <RaceControlPanel />
         </Panel>
       </div>
     </main>

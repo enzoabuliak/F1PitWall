@@ -106,6 +106,27 @@ class OpenF1Service:
     async def get_stints(self, session_key: int) -> List[Dict[str, Any]]:
         return await self._get("/stints", params={"session_key": session_key})
 
+    async def get_race_control(
+        self,
+        session_key: int,
+        date_gt: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        params: Dict[str, Any] = {"session_key": session_key}
+        if date_gt is not None:
+            params["date>"] = date_gt
+        return await self._get("/race_control", params=params)
+
+    async def get_car_data_window(
+        self,
+        session_key: int,
+        date_gt: str,
+        date_lt: str,
+    ) -> List[Dict[str, Any]]:
+        return await self._get(
+            "/car_data",
+            params={"session_key": session_key, "date>": date_gt, "date<": date_lt},
+        )
+
     async def get_location(
         self,
         session_key: int,

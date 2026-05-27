@@ -1,5 +1,8 @@
 import type {
   DriverPosition,
+  DrsResponse,
+  RaceControlMessage,
+  RaceControlResponse,
   RaceState,
   StrategyResponse,
   Team,
@@ -424,6 +427,114 @@ export async function getStrategy(): Promise<StrategyResponse | null> {
     max_lap: maxLap,
     drivers: rows,
   };
+}
+
+interface RaceControlRaw {
+  date: string;
+  category: string | null;
+  flag: string | null;
+  scope: string | null;
+  sector: number | null;
+  lap_number: number | null;
+  message: string | null;
+  driver_number: number | null;
+}
+
+function deriveOverallFlag(messages: RaceControlRaw[]): RaceControlResponse["overall"] {
+  for (const m of messages) {
+    const cat = (m.category ?? "").toUpperCase();
+    const flag = (m.flag ?? "").toUpperCase();
+    const scope = (m.scope ?? "").toUpperCase();
+    const msg = (m.message ?? "").toUpperCase();
+    if (cat === "SAFETYCAR" || msg.includes("SAFETY CAR")) {
+      if (msg.includes("VIRTUAL") || msg.includes("VSC")) {
+        if (msg.includes("ENDING") || msg.includes("RESTART")) continue;
+        return { state: "VSC", label: "Virtual Safety Car", since: m.date };
+      }
+      if (msg.includes("DEPLOYED")) {
+        return { state: "SC", label: "Safety Car", since: m.date };
+      }
+      if (msg.includes("IN THIS LAP") || msg.includes("ENDING")) {
+        return { state: "GREEN", label: "Track clear", since: m.date };
+      }
+    }
+    if (flag === "RED") return { state: "RED", label: "Red Flag", since: m.date };
+    if (flag === "CHEQUERED")
+      return { state: "CHEQUERED", label: "Chequered Flag", since: m.date };
+    if (flag === "YELLOW" || flag === "DOUBLE YELLOW") {
+      if (scope === "TRACK") {
+        return {
+          state: flag === "DOUBLE YELLOW" ? "DOUBLE_YELLOW" : "YELLOW",
+          label: flag === "DOUBLE YELLOW" ? "Double Yellow (track)" : "Yellow (track)",
+          since: m.date,
+        };
+      }
+    }
+    if (flag === "GREEN" && scope === "TRACK")
+      return { state: "GREEN", label: "Track clear", since: m.date };
+  }
+  return { state: "GREEN", label: "Track clear", since: null };
+}
+
+export async function getRaceControl(limit = 12): Promise<RaceControlResponse | null> {
+  const session = await getLatestSession();
+  if (!session) return null;
+  return memo(`openf1:rc:${session.session_key}:${limit}`, 10, async () => {
+    const url = new URL(`${BASE}/race_control`);
+    url.searchParams.set("session_key", String(session.session_key));
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (!res.ok) return null;
+    const raw = (await res.json()) as RaceControlRaw[];
+    raw.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+    const overall = deriveOverallFlag(raw);
+    const { drivers } = await loadRawForSession(session.session_key);
+    const driverMap = new Map(drivers.map((d) => [d.driver_number, d]));
+    const messages: RaceControlMessage[] = raw.slice(0, limit).map((m) => ({
+      date: m.date,
+      category: m.category,
+      flag: m.flag,
+      scope: m.scope,
+      sector: m.sector,
+      lap_number: m.lap_number,
+      message: m.message,
+      driver_number: m.driver_number,
+      driver_acronym:
+        m.driver_number != null ? driverMap.get(m.driver_number)?.name_acronym ?? null : null,
+    }));
+    return { session_key: session.session_key, overall, messages };
+  });
+}
+
+export async function getDrs(): Promise<DrsResponse | null> {
+  const session = await getLatestSession();
+  if (!session) return null;
+  return memo(`openf1:drs:${session.session_key}`, 3, async () => {
+    const end = session.date_end ?? session.date_start;
+    const start = addSeconds(end, -5);
+    const url = new URL(`${BASE}/car_data`);
+    url.searchParams.set("session_key", String(session.session_key));
+    url.searchParams.set("date>", start);
+    url.searchParams.set("date<", end);
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (!res.ok) return null;
+    const rows = (await res.json()) as Array<Record<string, unknown>>;
+    const latest = new Map<number, Record<string, unknown>>();
+    for (const r of rows) {
+      const dn = Number(r.driver_number);
+      if (!Number.isFinite(dn)) continue;
+      const prev = latest.get(dn);
+      if (!prev || (r.date as string) > (prev.date as string)) latest.set(dn, r);
+    }
+    const out: DrsResponse["drs"] = {};
+    for (const [dn, r] of latest.entries()) {
+      const drs = r.drs == null ? null : Number(r.drs);
+      out[dn] = {
+        drs,
+        open: drs != null && drs >= 10,
+      };
+    }
+    return { session_key: session.session_key, drs: out };
+  });
 }
 
 export async function getTelemetry(driverNumber: number): Promise<TelemetryFrame> {
