@@ -5,6 +5,7 @@ import type {
   LastRaceResults,
   RaceState,
   ScheduleResponse,
+  StrategyResponse,
   Team,
   TelemetryFrame,
   TrackMap,
@@ -87,6 +88,15 @@ export async function fetchTrackMap(): Promise<TrackMap | null> {
   if (USE_STATIC) return openf1.getTrackMap();
   try {
     return await getJSON<TrackMap>("/api/track/map");
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchStrategy(): Promise<StrategyResponse | null> {
+  if (USE_STATIC) return openf1.getStrategy();
+  try {
+    return await getJSON<StrategyResponse>("/api/strategy/stints");
   } catch {
     return null;
   }

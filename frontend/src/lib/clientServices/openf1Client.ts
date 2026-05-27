@@ -1,6 +1,7 @@
 import type {
   DriverPosition,
   RaceState,
+  StrategyResponse,
   Team,
   TelemetryFrame,
   TrackMap,
@@ -369,6 +370,53 @@ export async function getTrackMap(): Promise<TrackMap | null> {
   });
 
   return { session_key: session.session_key, outline, positions };
+}
+
+export async function getStrategy(): Promise<StrategyResponse | null> {
+  const session = await getLatestSession();
+  if (!session) return null;
+  const { drivers, stints } = await loadRawForSession(session.session_key);
+  const { timing } = await getTiming();
+  const timingByNum = new Map(timing.map((t) => [t.driver_number, t]));
+  const driverMap = new Map(drivers.map((d) => [d.driver_number, d]));
+
+  const byDriver = new Map<number, StintRaw[]>();
+  let maxLap = 0;
+  for (const s of stints) {
+    if (s.driver_number == null) continue;
+    if (!byDriver.has(s.driver_number)) byDriver.set(s.driver_number, []);
+    byDriver.get(s.driver_number)!.push(s);
+    const end = Number(((s as unknown as Record<string, unknown>).lap_end ?? 0));
+    if (end > maxLap) maxLap = end;
+  }
+
+  const rows = [...byDriver.entries()].map(([dn, list]) => {
+    list.sort((a, b) => (a.stint_number ?? 0) - (b.stint_number ?? 0));
+    const info = driverMap.get(dn);
+    const t = timingByNum.get(dn);
+    return {
+      driver_number: dn,
+      full_name: info?.full_name ?? null,
+      name_acronym: info?.name_acronym ?? null,
+      team_name: info?.team_name ?? null,
+      team_colour: info?.team_colour ?? null,
+      position: t?.position ?? null,
+      pit_stops: Math.max(0, list.length - 1),
+      stints: list.map((s) => ({
+        stint_number: s.stint_number,
+        compound: s.compound,
+        lap_start: Number(((s as unknown as Record<string, unknown>).lap_start ?? 0)) || null,
+        lap_end: Number(((s as unknown as Record<string, unknown>).lap_end ?? 0)) || null,
+        tyre_age_at_start: s.tyre_age_at_start,
+      })),
+    };
+  });
+  rows.sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+  return {
+    session_key: session.session_key,
+    max_lap: maxLap,
+    drivers: rows,
+  };
 }
 
 export async function getTelemetry(driverNumber: number): Promise<TelemetryFrame> {

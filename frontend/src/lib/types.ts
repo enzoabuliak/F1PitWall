@@ -151,6 +151,31 @@ export interface TrackMap {
   positions: TrackPosition[];
 }
 
+export interface Stint {
+  stint_number: number | null;
+  compound: string | null;
+  lap_start: number | null;
+  lap_end: number | null;
+  tyre_age_at_start: number | null;
+}
+
+export interface DriverStrategy {
+  driver_number: number;
+  full_name: string | null;
+  name_acronym: string | null;
+  team_name: string | null;
+  team_colour: string | null;
+  position: number | null;
+  pit_stops: number;
+  stints: Stint[];
+}
+
+export interface StrategyResponse {
+  session_key: number;
+  max_lap: number;
+  drivers: DriverStrategy[];
+}
+
 export interface TelemetryFrame {
   driver_number: number;
   timestamp: number;
