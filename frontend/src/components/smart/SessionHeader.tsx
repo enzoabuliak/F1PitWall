@@ -48,8 +48,6 @@ export function SessionHeader() {
   const pathname = usePathname();
   const fresh = lastUpdate > 0 && Date.now() - lastUpdate < 10000;
   const statusKey = (race?.session_status as keyof typeof STATUS_LABEL) ?? "unknown";
-  // "live" must be backed by fresh timing data; finished/upcoming reflect the race calendar
-  // regardless of whether timing is flowing right now.
   const effectiveKey =
     statusKey === "live" && !fresh
       ? "unknown"
@@ -59,52 +57,64 @@ export function SessionHeader() {
   const status = STATUS_LABEL[effectiveKey] ?? STATUS_LABEL.unknown;
 
   return (
-    <div className="flex items-center justify-between border-b border-white/10 bg-black/60 backdrop-blur-xl px-6 py-3">
-      <div className="flex items-center gap-4">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-sm bg-[#DC0000] flex items-center justify-center shadow-[0_0_12px_#DC0000]">
+    <header className="border-b border-white/10 bg-black/60 backdrop-blur-xl">
+      <div className="flex items-center gap-4 px-4 sm:px-6 py-3">
+        <Link
+          href="/"
+          aria-label="F1 Pit Wall home"
+          className="flex items-center gap-2 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#DC0000]/60 focus-visible:outline-offset-2"
+        >
+          <div className="h-7 w-7 rounded-sm bg-[#DC0000] flex items-center justify-center shadow-[0_0_12px_#DC0000]">
             <span className="text-xs font-black text-white">F1</span>
           </div>
-          <span className="text-sm font-bold tracking-[0.2em] text-white">PIT WALL</span>
+          <span className="hidden sm:inline text-sm font-bold tracking-[0.2em] text-white">PIT WALL</span>
         </Link>
-        <div className="h-6 w-px bg-white/10" />
-        <nav className="flex items-center gap-1">
-          {NAV.map((n) => {
-            const active = pathname === n.href;
-            return (
-              <Link
-                key={n.href}
-                href={n.href}
-                className={cn(
-                  "px-3 py-1 rounded-md text-[11px] uppercase tracking-[0.2em] font-bold transition-colors",
-                  active
-                    ? "bg-[#DC0000]/15 text-[#DC0000] shadow-[0_0_12px_rgba(220,0,0,0.3)]"
-                    : "text-neutral-400 hover:text-white hover:bg-white/5",
-                )}
-              >
-                {n.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="h-6 w-px bg-white/10" />
-        <div>
+
+        <div className="hidden md:block h-6 w-px bg-white/10" />
+
+        <div className="hidden lg:block min-w-0">
           <div className="text-[10px] uppercase tracking-[0.2em] text-neutral-500">Session</div>
-          <div className="text-sm font-mono text-white">
+          <div className="text-sm font-mono text-white truncate">
             {race?.session_name ?? "—"} · {race?.country ?? "—"} · {race?.circuit ?? "—"}
           </div>
         </div>
-      </div>
-      <div className="flex items-center gap-3">
-        {race?.year && (
-          <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-mono">
-            {race.year}
+
+        <div className="flex items-center gap-2 ml-auto shrink-0">
+          {race?.year && (
+            <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-mono">
+              {race.year}
+            </span>
+          )}
+          <span className={cn("text-[10px] uppercase tracking-[0.2em] font-bold", status.color)}>
+            {status.label}
           </span>
-        )}
-        <span className={`text-[10px] uppercase tracking-[0.2em] font-bold ${status.color}`}>
-          {status.label}
-        </span>
+        </div>
       </div>
-    </div>
+
+      <nav
+        aria-label="Primary"
+        className="flex items-center gap-1 overflow-x-auto px-4 sm:px-6 pb-2 -mt-1 scrollbar-thin"
+      >
+        {NAV.map((n) => {
+          const active = pathname === n.href;
+          return (
+            <Link
+              key={n.href}
+              href={n.href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "shrink-0 inline-flex items-center justify-center min-h-[36px] px-3 rounded-md text-[11px] uppercase tracking-[0.2em] font-bold transition-colors cursor-pointer",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DC0000]/60",
+                active
+                  ? "bg-[#DC0000]/15 text-[#DC0000] shadow-[0_0_12px_rgba(220,0,0,0.3)]"
+                  : "text-neutral-400 hover:text-white hover:bg-white/5",
+              )}
+            >
+              {n.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </header>
   );
 }

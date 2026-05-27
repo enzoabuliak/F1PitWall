@@ -117,7 +117,7 @@ class ErgastService:
         cached = await self.cache.get(cache_key)
         if cached is not None:
             return cached
-        data = await self._get(f"/{year}/results/1?limit=100")
+        data = await self._get(f"/{year}/results/1?limit=30")
         rows: List[Dict[str, Any]] = []
         try:
             races = data["MRData"]["RaceTable"]["Races"] if data else []
@@ -145,20 +145,44 @@ class ErgastService:
             )
         rows.sort(key=lambda x: x.get("round") or 0)
         if rows:
-            await self.cache.set(cache_key, rows, 86400)
+            await self.cache.set(cache_key, rows, 3600)
         return rows
 
     async def all_season_results(self, year: int) -> List[Dict[str, Any]]:
-        """Per-round constructor points for the line chart."""
+        """Per-round constructor points for the line chart.
+
+        Ergast caps `limit` at 100, so for a 22-round season (~440 rows)
+        we paginate. We collect races by round number and merge as we go.
+        """
         cache_key = f"ergast:allresults:{year}"
         cached = await self.cache.get(cache_key)
         if cached is not None:
             return cached
-        data = await self._get(f"/{year}/results?limit=1000")
-        try:
-            races = data["MRData"]["RaceTable"]["Races"] if data else []
-        except (KeyError, TypeError):
-            races = []
+
+        races_by_round: Dict[int, Dict[str, Any]] = {}
+        offset = 0
+        page_size = 100
+        for _ in range(20):  # hard cap to avoid infinite loops
+            data = await self._get(
+                f"/{year}/results?limit={page_size}&offset={offset}"
+            )
+            try:
+                mrdata = data["MRData"] if data else {}
+                page_races = mrdata["RaceTable"]["Races"]
+                total = int(mrdata.get("total") or 0)
+            except (KeyError, TypeError, ValueError):
+                break
+            if not page_races:
+                break
+            for r in page_races:
+                rd = int(r.get("round", 0))
+                if rd not in races_by_round:
+                    races_by_round[rd] = {**r, "Results": []}
+                races_by_round[rd]["Results"].extend(r.get("Results") or [])
+            offset += page_size
+            if offset >= total:
+                break
+        races = [races_by_round[k] for k in sorted(races_by_round.keys())]
         rounds: List[Dict[str, Any]] = []
         for r in races:
             results = r.get("Results") or []
@@ -194,8 +218,9 @@ class ErgastService:
                     )
             rounds.append(row)
         rounds.sort(key=lambda x: x.get("round") or 0)
+        # 1 hour: short enough that a new race result appears the same day
         if rounds:
-            await self.cache.set(cache_key, rounds, 86400)
+            await self.cache.set(cache_key, rounds, 3600)
         return rounds
 
     async def season_schedule(self, year: int) -> List[Dict[str, Any]]:

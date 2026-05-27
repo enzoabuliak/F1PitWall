@@ -152,7 +152,7 @@ export async function getAvailableSeasons(): Promise<number[]> {
 }
 
 export async function getSeasonWinners(year: number): Promise<SeasonWinner[]> {
-  return memo(`ergast:winners:${year}`, 86400, async () => {
+  return memo(`ergast:winners:${year}`, 3600, async () => {
     const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }>>(
       `/${year}/results/1?limit=100`,
     );
@@ -183,11 +183,38 @@ export async function getSeasonWinners(year: number): Promise<SeasonWinner[]> {
 }
 
 export async function getAllSeasonResults(year: number): Promise<SeasonRoundResults[]> {
-  return memo(`ergast:allresults:${year}`, 86400, async () => {
-    const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }>>(
-      `/${year}/results?limit=1000`,
-    );
-    const races = data?.MRData?.RaceTable?.Races ?? [];
+  return memo(`ergast:allresults:${year}`, 3600, async () => {
+    // Ergast caps `limit` at 100, so we paginate and merge by round.
+    const racesByRound = new Map<number, Record<string, unknown>>();
+    let offset = 0;
+    const pageSize = 100;
+    for (let i = 0; i < 20; i++) {
+      const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }> & {
+        MRData: { total?: string };
+      }>(`/${year}/results?limit=${pageSize}&offset=${offset}`);
+      const mr = data?.MRData;
+      if (!mr) break;
+      const total = parseInt(mr.total ?? "0", 10);
+      const pageRaces = mr.RaceTable?.Races ?? [];
+      if (!pageRaces.length) break;
+      for (const r of pageRaces) {
+        const round = parseInt(String(r.round ?? 0), 10);
+        if (!racesByRound.has(round)) {
+          racesByRound.set(round, { ...r, Results: [] });
+        }
+        const existing = racesByRound.get(round)!;
+        const merged = [
+          ...((existing.Results as Array<unknown>) ?? []),
+          ...((r.Results as Array<unknown>) ?? []),
+        ];
+        existing.Results = merged;
+      }
+      offset += pageSize;
+      if (offset >= total) break;
+    }
+    const races = [...racesByRound.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, r]) => r);
     const rounds: SeasonRoundResults[] = races.map((r) => {
       const results = (r.Results ?? []) as Array<Record<string, unknown>>;
       const points: Record<string, number> = {};

@@ -11,6 +11,7 @@ import { SessionHeader } from "@/components/smart/SessionHeader";
 import { Panel } from "@/components/atoms/Panel";
 import { SeasonPicker } from "@/components/smart/SeasonPicker";
 import { PointsProgressionChart } from "@/components/smart/PointsProgressionChart";
+import { teamColorOrLive } from "@/lib/teamColors";
 import type {
   ConstructorStanding,
   SeasonRoundResults,
@@ -171,9 +172,7 @@ export default function ConstructorsPage() {
                 </div>
                 <ol className="space-y-1" role="list">
                   {rows.map((r) => {
-                    const colour = teamColours[r.team_name]
-                      ? `#${teamColours[r.team_name]!.replace("#", "")}`
-                      : "#666";
+                    const colour = teamColorOrLive(r.team_name, teamColours[r.team_name]);
                     return (
                       <li
                         key={r.team_name}

@@ -12,6 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import type { SeasonRoundResults } from "@/lib/types";
+import { teamColorOrLive } from "@/lib/teamColors";
 
 interface Props {
   rounds: SeasonRoundResults[];
@@ -19,39 +20,24 @@ interface Props {
   topN?: number;
 }
 
-const FALLBACK_PALETTE = [
-  "#DC0000",
-  "#00D7B6",
-  "#F47600",
-  "#4781D7",
-  "#FFD15C",
-  "#3FB364",
-  "#B36BFF",
-  "#FF4747",
-];
-
 export function PointsProgressionChart({ rounds, teamColours = {}, topN = 6 }: Props) {
   const { data, teams, colours } = useMemo(() => {
     const cumulative: Record<string, number> = {};
     const data: Array<Record<string, number | string>> = [];
-    const allTeams = new Set<string>();
     for (const round of rounds) {
       for (const [team, pts] of Object.entries(round.constructor_points)) {
         cumulative[team] = (cumulative[team] ?? 0) + pts;
-        allTeams.add(team);
       }
       data.push({
         round: `R${round.round}`,
         ...cumulative,
       });
     }
-    // pick top N by final cumulative
     const totals = Object.entries(cumulative).sort((a, b) => b[1] - a[1]);
     const teams = totals.slice(0, topN).map(([name]) => name);
     const colours: Record<string, string> = {};
     teams.forEach((t, i) => {
-      const c = teamColours[t];
-      colours[t] = c ? `#${c.replace("#", "")}` : FALLBACK_PALETTE[i % FALLBACK_PALETTE.length];
+      colours[t] = teamColorOrLive(t, teamColours[t], i);
     });
     return { data, teams, colours };
   }, [rounds, teamColours, topN]);
@@ -67,38 +53,42 @@ export function PointsProgressionChart({ rounds, teamColours = {}, topN = 6 }: P
   }
 
   return (
-    <div className="w-full h-[420px]">
+    <div className="w-full h-[420px]" aria-label="Constructor points progression chart">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 12, right: 24, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="#1f1f1f" strokeDasharray="3 3" />
           <XAxis
             dataKey="round"
             stroke="#666"
-            tick={{ fill: "#888", fontSize: 10, fontFamily: "ui-monospace" }}
+            tick={{ fill: "#aaa", fontSize: 10, fontFamily: "ui-monospace" }}
+            interval={0}
+            tickMargin={6}
           />
           <YAxis
             stroke="#666"
-            tick={{ fill: "#888", fontSize: 10, fontFamily: "ui-monospace" }}
+            tick={{ fill: "#aaa", fontSize: 10, fontFamily: "ui-monospace" }}
             label={{
               value: "Points",
               angle: -90,
               position: "insideLeft",
-              style: { fill: "#666", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.2em" },
+              style: { fill: "#888", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.2em" },
             }}
           />
           <Tooltip
             contentStyle={{
-              background: "rgba(0,0,0,0.85)",
-              border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(0,0,0,0.9)",
+              border: "1px solid rgba(255,255,255,0.12)",
               borderRadius: 6,
               fontFamily: "ui-monospace",
               fontSize: 11,
             }}
-            labelStyle={{ color: "#fff" }}
+            labelStyle={{ color: "#fff", marginBottom: 4 }}
             itemStyle={{ color: "#fff" }}
+            cursor={{ stroke: "#444", strokeWidth: 1 }}
           />
           <Legend
-            wrapperStyle={{ fontSize: 11, fontFamily: "ui-monospace", color: "#aaa" }}
+            wrapperStyle={{ fontSize: 11, fontFamily: "ui-monospace", color: "#ccc", paddingTop: 8 }}
+            iconType="plainline"
           />
           {teams.map((team) => (
             <Line
@@ -107,7 +97,8 @@ export function PointsProgressionChart({ rounds, teamColours = {}, topN = 6 }: P
               dataKey={team}
               stroke={colours[team]}
               strokeWidth={2}
-              dot={false}
+              dot={{ r: 2.5, fill: colours[team] }}
+              activeDot={{ r: 5 }}
               isAnimationActive={false}
               connectNulls
             />
