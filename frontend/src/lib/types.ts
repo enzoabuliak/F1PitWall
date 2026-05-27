@@ -15,6 +15,7 @@ export interface DriverPosition {
   drs: boolean | null;
   tire_compound: "SOFT" | "MEDIUM" | "HARD" | "INTERMEDIATE" | "WET" | string | null;
   tire_age: number | null;
+  pit_stops?: number | null;
 }
 
 export interface Weather {

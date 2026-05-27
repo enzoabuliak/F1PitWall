@@ -188,6 +188,12 @@ export async function getTiming(): Promise<{ timing: DriverPosition[] }> {
   const latestStint = new Map<number, StintRaw>();
   for (const s of stints) latestStint.set(s.driver_number, s);
 
+  const stintCount = new Map<number, number>();
+  for (const s of stints) {
+    if (s.driver_number == null) continue;
+    stintCount.set(s.driver_number, (stintCount.get(s.driver_number) ?? 0) + 1);
+  }
+
   const out: DriverPosition[] = [];
   for (const [dn, pos] of latestPos.entries()) {
     const info = driverMap.get(dn);
@@ -219,6 +225,7 @@ export async function getTiming(): Promise<{ timing: DriverPosition[] }> {
       drs: null,
       tire_compound: stint?.compound ?? null,
       tire_age: stint?.tyre_age_at_start ?? null,
+      pit_stops: Math.max(0, (stintCount.get(dn) ?? 0) - 1),
     });
   }
   out.sort((a, b) => (a.position ?? 999) - (b.position ?? 999));

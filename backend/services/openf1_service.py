@@ -190,6 +190,13 @@ class OpenF1Service:
 
         driver_map: Dict[int, Dict[str, Any]] = (await self.cache.get("drivers:map")) or {}
 
+        # Count stints per driver so we can derive pit stops
+        stint_counts: Dict[int, int] = {}
+        for s in stints:
+            dn = s.get("driver_number")
+            if dn is not None:
+                stint_counts[dn] = stint_counts.get(dn, 0) + 1
+
         snapshot: List[Dict[str, Any]] = []
         for dn, pos in latest_pos.items():
             info = driver_map.get(dn, {})
@@ -217,6 +224,7 @@ class OpenF1Service:
                     "last_lap_time": lap.get("lap_duration"),
                     "tire_compound": stint.get("compound"),
                     "tire_age": stint.get("tyre_age_at_start"),
+                    "pit_stops": max(0, stint_counts.get(dn, 0) - 1),
                 }
             )
         snapshot.sort(key=lambda d: d.get("position") or 999)
