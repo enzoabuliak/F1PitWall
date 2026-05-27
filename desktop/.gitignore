@@ -1,4 +1,6 @@
-dist/
+# Build artifacts that aren't shipped
 build/
 *.dSYM/
-AppIcon.icns
+
+# Keep the built .app committed so users can download from GitHub
+# without having Xcode tools installed. Rebuild with ./build.sh.

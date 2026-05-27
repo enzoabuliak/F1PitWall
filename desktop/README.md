@@ -9,6 +9,17 @@ window powered by `WKWebView`.
 - Cmd-R to reload · Cmd-0 to go home · Cmd-Ctrl-F to fullscreen
 - External links open in your default browser; the app stays on the dashboard
 
+## Download
+
+A prebuilt universal binary is committed at
+[`desktop/dist/F1 Pit Wall.app`](dist/) — clone the repo and double-click
+the `.app`, or:
+
+```bash
+cp -R "desktop/dist/F1 Pit Wall.app" /Applications/
+open "/Applications/F1 Pit Wall.app"
+```
+
 ## Build
 
 ```bash
