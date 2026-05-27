@@ -68,7 +68,8 @@ export default function QualifyingPage() {
               No qualifying results available
             </div>
           ) : (
-            <div>
+            <div className="overflow-x-auto -mx-1 px-1">
+              <div className="min-w-[760px]">
               <div className="grid grid-cols-[28px_40px_1fr_120px_90px_90px_90px_90px] gap-2 px-3 pb-2 text-[9px] uppercase tracking-[0.18em] text-neutral-500 font-mono">
                 <span>P</span>
                 <span>#</span>
@@ -148,6 +149,7 @@ export default function QualifyingPage() {
                   );
                 })}
               </ol>
+              </div>
             </div>
           )}
         </Panel>

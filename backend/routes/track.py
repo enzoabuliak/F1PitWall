@@ -68,26 +68,66 @@ async def _build_outline(request: Request, session_key: int) -> Dict[str, Any]:
             date_gt=sample_start.isoformat().replace("+00:00", "Z"),
             date_lt=sample_end.isoformat().replace("+00:00", "Z"),
         )
-    points: List[Tuple[float, float]] = []
+    # Pair location samples with car_data to know when the leader's DRS was open.
+    car_rows: List[Dict[str, Any]] = []
+    if rows:
+        first_date = rows[0].get("date")
+        last_date = rows[-1].get("date")
+        if first_date and last_date:
+            car_rows = await openf1.get_car_data_window(
+                session_key=session_key,
+                date_gt=first_date,
+                date_lt=last_date,
+            )
+            car_rows = [c for c in car_rows if c.get("driver_number") == leader_num]
+            car_rows.sort(key=lambda r: r.get("date") or "")
+
+    def _drs_at(t: Optional[str], cursor: List[int]) -> bool:
+        if not t or not car_rows:
+            return False
+        i = cursor[0]
+        while i + 1 < len(car_rows) and (car_rows[i + 1].get("date") or "") <= t:
+            i += 1
+        cursor[0] = i
+        drs_val = car_rows[i].get("drs")
+        try:
+            return drs_val is not None and int(drs_val) >= 10
+        except (TypeError, ValueError):
+            return False
+
+    cursor = [0]
+    raw_points: List[Tuple[float, float, bool]] = []
     for r in rows:
         x = r.get("x")
         y = r.get("y")
         if x is None or y is None:
             continue
-        points.append((float(x), float(y)))
+        raw_points.append((float(x), float(y), _drs_at(r.get("date"), cursor)))
 
-    # simple downsample to ~200 points if larger
-    if len(points) > 200:
-        step = max(1, len(points) // 200)
-        points = points[::step]
+    # Downsample evenly, preserving DRS flag (OR within each bucket so we don't lose zones)
+    target = 220
+    if len(raw_points) > target:
+        step = max(1, len(raw_points) // target)
+        sampled: List[Tuple[float, float, bool]] = []
+        for i in range(0, len(raw_points), step):
+            bucket = raw_points[i : i + step]
+            x = bucket[0][0]
+            y = bucket[0][1]
+            drs_any = any(p[2] for p in bucket)
+            sampled.append((x, y, drs_any))
+        raw_points = sampled
+
+    points_xy = [(p[0], p[1]) for p in raw_points]
+    drs_indices = [i for i, p in enumerate(raw_points) if p[2]]
 
     payload = {
         "session_key": session_key,
         "driver_number": leader_num,
-        "points": points,
-        "bounds": _bounds(points),
+        "points": points_xy,
+        "drs_indices": drs_indices,
+        "bounds": _bounds(points_xy),
     }
-    if points:
+    if points_xy:
         await cache.set(cache_key, payload, OUTLINE_TTL)
     return payload
 

@@ -85,12 +85,26 @@ export function TrackMap({ refreshMs = 4000, highlightDriver = null, compact = f
     );
   }
 
-  const path = data.outline.points
-    .map((p, i) => {
-      const [x, y] = project(p, data.outline.bounds);
-      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ") + " Z";
+  const projected = data.outline.points.map((p) => project(p, data.outline.bounds));
+  const path =
+    projected
+      .map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`)
+      .join(" ") + " Z";
+
+  // Build separate sub-paths for contiguous DRS-open spans.
+  const drsSet = new Set(data.outline.drs_indices ?? []);
+  const drsPaths: string[] = [];
+  let current: string[] = [];
+  for (let i = 0; i < projected.length; i++) {
+    if (drsSet.has(i)) {
+      const [x, y] = projected[i];
+      current.push(`${current.length === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`);
+    } else if (current.length) {
+      drsPaths.push(current.join(" "));
+      current = [];
+    }
+  }
+  if (current.length) drsPaths.push(current.join(" "));
 
   return (
     <div className="relative w-full">
@@ -137,6 +151,28 @@ export function TrackMap({ refreshMs = 4000, highlightDriver = null, compact = f
           strokeDasharray="6 6"
           fill="none"
         />
+
+        {/* DRS zones — leader's DRS-open segments */}
+        {drsPaths.map((dPath, i) => (
+          <g key={i}>
+            <path
+              d={dPath}
+              stroke="#00ff9c"
+              strokeWidth={12}
+              strokeLinecap="round"
+              strokeOpacity={0.18}
+              fill="none"
+            />
+            <path
+              d={dPath}
+              stroke="#00ff9c"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeOpacity={0.85}
+              fill="none"
+            />
+          </g>
+        ))}
 
         {/* drivers */}
         {data.positions.map((p) => {

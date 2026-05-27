@@ -320,16 +320,64 @@ export async function getTrackMap(): Promise<TrackMap | null> {
       });
       if (rows.length > 50) break;
     }
-    const pts: Array<[number, number]> = [];
+    let carRows: Array<Record<string, unknown>> = [];
+    if (rows.length) {
+      const firstDate = rows[0].date;
+      const lastDate = rows[rows.length - 1].date;
+      const url = new URL(`${BASE}/car_data`);
+      url.searchParams.set("session_key", String(session.session_key));
+      url.searchParams.set("date>", firstDate);
+      url.searchParams.set("date<", lastDate);
+      try {
+        const res = await fetch(url.toString(), { cache: "no-store" });
+        if (res.ok) {
+          const all = (await res.json()) as Array<Record<string, unknown>>;
+          carRows = all
+            .filter((c) => c.driver_number === leader)
+            .sort((a, b) => ((a.date as string) ?? "").localeCompare((b.date as string) ?? ""));
+        }
+      } catch {
+        carRows = [];
+      }
+    }
+    let cursor = 0;
+    function drsAt(t: string | undefined): boolean {
+      if (!t || !carRows.length) return false;
+      while (
+        cursor + 1 < carRows.length &&
+        (((carRows[cursor + 1].date as string) ?? "") <= t)
+      ) {
+        cursor += 1;
+      }
+      const v = carRows[cursor].drs;
+      const n = v == null ? null : Number(v);
+      return n != null && n >= 10;
+    }
+
+    const raw: Array<{ x: number; y: number; drs: boolean }> = [];
     for (const r of rows) {
-      if (r.x != null && r.y != null) pts.push([r.x, r.y]);
+      if (r.x == null || r.y == null) continue;
+      raw.push({ x: r.x, y: r.y, drs: drsAt(r.date) });
     }
-    if (pts.length > 200) {
-      const step = Math.max(1, Math.floor(pts.length / 200));
-      const sampled: Array<[number, number]> = [];
-      for (let i = 0; i < pts.length; i += step) sampled.push(pts[i]);
-      pts.splice(0, pts.length, ...sampled);
+    const target = 220;
+    let bucketed = raw;
+    if (raw.length > target) {
+      const step = Math.max(1, Math.floor(raw.length / target));
+      bucketed = [];
+      for (let i = 0; i < raw.length; i += step) {
+        const bucket = raw.slice(i, i + step);
+        bucketed.push({
+          x: bucket[0].x,
+          y: bucket[0].y,
+          drs: bucket.some((p) => p.drs),
+        });
+      }
     }
+    const pts: Array<[number, number]> = bucketed.map((b) => [b.x, b.y]);
+    const drs_indices: number[] = [];
+    bucketed.forEach((b, i) => {
+      if (b.drs) drs_indices.push(i);
+    });
     if (!pts.length) return null;
     const xs = pts.map((p) => p[0]);
     const ys = pts.map((p) => p[1]);
@@ -337,6 +385,7 @@ export async function getTrackMap(): Promise<TrackMap | null> {
       session_key: session.session_key,
       driver_number: leader,
       points: pts,
+      drs_indices,
       bounds: {
         min_x: Math.min(...xs),
         max_x: Math.max(...xs),

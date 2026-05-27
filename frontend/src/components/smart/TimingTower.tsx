@@ -52,31 +52,33 @@ export function TimingTower() {
   }
 
   return (
-    <div className="space-y-1">
-      <div className={cn("grid gap-2 px-3 pb-1 text-[9px] uppercase tracking-[0.18em] text-neutral-500 font-mono", "grid-cols-[28px_44px_1fr_70px_36px_42px_60px_60px_60px_70px]")}>
-        <span>P</span>
-        <span>#</span>
-        <span>Driver</span>
-        <span className="text-right">Gap</span>
-        <span className="text-right">Pit</span>
-        <span className="text-right">DRS</span>
-        <span className="text-right">S1</span>
-        <span className="text-right">S2</span>
-        <span className="text-right">S3</span>
-        <span className="text-right">Last Lap</span>
+    <div className="overflow-x-auto -mx-1 px-1">
+      <div className="min-w-[700px] space-y-1">
+        <div className={cn("grid gap-2 px-3 pb-1 text-[9px] uppercase tracking-[0.18em] text-neutral-500 font-mono", "grid-cols-[28px_44px_1fr_70px_36px_42px_60px_60px_60px_70px]")}>
+          <span>P</span>
+          <span>#</span>
+          <span>Driver</span>
+          <span className="text-right">Gap</span>
+          <span className="text-right">Pit</span>
+          <span className="text-right">DRS</span>
+          <span className="text-right">S1</span>
+          <span className="text-right">S2</span>
+          <span className="text-right">S3</span>
+          <span className="text-right">Last Lap</span>
+        </div>
+        <AnimatePresence initial={false}>
+          {positions.map((d) => (
+            <TimingRow
+              key={d.driver_number}
+              driver={d}
+              bests={bests}
+              drs={drs[d.driver_number] ?? drs[String(d.driver_number)]}
+              selected={selected === d.driver_number}
+              onSelect={() => setSelected(selected === d.driver_number ? null : d.driver_number)}
+            />
+          ))}
+        </AnimatePresence>
       </div>
-      <AnimatePresence initial={false}>
-        {positions.map((d) => (
-          <TimingRow
-            key={d.driver_number}
-            driver={d}
-            bests={bests}
-            drs={drs[d.driver_number] ?? drs[String(d.driver_number)]}
-            selected={selected === d.driver_number}
-            onSelect={() => setSelected(selected === d.driver_number ? null : d.driver_number)}
-          />
-        ))}
-      </AnimatePresence>
     </div>
   );
 }

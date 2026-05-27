@@ -161,7 +161,8 @@ export default function ConstructorsPage() {
             {rows.length === 0 ? (
               <div className="text-xs text-neutral-500 font-mono">No data</div>
             ) : (
-              <div>
+              <div className="overflow-x-auto -mx-1 px-1">
+              <div className="min-w-[520px]">
                 <div className="grid grid-cols-[28px_1fr_70px_60px_60px_80px] gap-2 px-3 pb-1 text-[9px] uppercase tracking-[0.18em] text-neutral-500 font-mono">
                   <span>P</span>
                   <span>Team</span>
@@ -204,6 +205,7 @@ export default function ConstructorsPage() {
                     );
                   })}
                 </ol>
+              </div>
               </div>
             )}
           </Panel>

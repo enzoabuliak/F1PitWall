@@ -76,11 +76,13 @@ export function StrategyTimeline() {
         </span>
       </div>
 
-      <ol className="space-y-2" role="list" aria-label="Tire strategy per driver">
-        {data.drivers.map((d) => (
-          <DriverRow key={d.driver_number} driver={d} maxLap={maxLap} />
-        ))}
-      </ol>
+      <div className="overflow-x-auto -mx-1 px-1">
+        <ol className="space-y-2 min-w-[640px]" role="list" aria-label="Tire strategy per driver">
+          {data.drivers.map((d) => (
+            <DriverRow key={d.driver_number} driver={d} maxLap={maxLap} />
+          ))}
+        </ol>
+      </div>
     </div>
   );
 }

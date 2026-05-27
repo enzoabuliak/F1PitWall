@@ -133,6 +133,8 @@ export interface TrackOutline {
   session_key: number;
   driver_number: number;
   points: Array<[number, number]>;
+  /** Indices in `points` where the reference driver had DRS open (>= 10). */
+  drs_indices: number[];
   bounds: { min_x: number; max_x: number; min_y: number; max_y: number };
 }
 
