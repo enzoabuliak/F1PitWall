@@ -128,6 +128,29 @@ export interface LastRaceResults {
   results: RaceResult[];
 }
 
+export interface TrackOutline {
+  session_key: number;
+  driver_number: number;
+  points: Array<[number, number]>;
+  bounds: { min_x: number; max_x: number; min_y: number; max_y: number };
+}
+
+export interface TrackPosition {
+  driver_number: number;
+  x: number;
+  y: number;
+  team_colour: string | null;
+  name_acronym: string | null;
+  full_name: string | null;
+  position: number | null;
+}
+
+export interface TrackMap {
+  session_key: number;
+  outline: TrackOutline;
+  positions: TrackPosition[];
+}
+
 export interface TelemetryFrame {
   driver_number: number;
   timestamp: number;

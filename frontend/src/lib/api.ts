@@ -7,6 +7,7 @@ import type {
   ScheduleResponse,
   Team,
   TelemetryFrame,
+  TrackMap,
   Weather,
 } from "./types";
 import * as openf1 from "./clientServices/openf1Client";
@@ -80,4 +81,13 @@ export async function fetchLastRace(): Promise<LastRaceResults> {
     return result;
   }
   return getJSON("/api/championship/last-race");
+}
+
+export async function fetchTrackMap(): Promise<TrackMap | null> {
+  if (USE_STATIC) return openf1.getTrackMap();
+  try {
+    return await getJSON<TrackMap>("/api/track/map");
+  } catch {
+    return null;
+  }
 }

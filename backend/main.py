@@ -9,7 +9,7 @@ from config import CORS_ORIGINS, TIMING_POLL_INTERVAL
 from cache.memory_cache import MemoryCache
 from services.openf1_service import OpenF1Service
 from services.ergast_service import ErgastService
-from routes import live, championship
+from routes import live, championship, track
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("f1-backend")
@@ -45,6 +45,7 @@ app.add_middleware(
 
 app.include_router(live.router, prefix="/api/live", tags=["live"])
 app.include_router(championship.router, prefix="/api/championship", tags=["championship"])
+app.include_router(track.router, prefix="/api/track", tags=["track"])
 
 
 @app.get("/")

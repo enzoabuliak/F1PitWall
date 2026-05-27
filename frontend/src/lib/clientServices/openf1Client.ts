@@ -3,6 +3,9 @@ import type {
   RaceState,
   Team,
   TelemetryFrame,
+  TrackMap,
+  TrackOutline,
+  TrackPosition,
   Weather,
 } from "../types";
 import { memo } from "./cache";
@@ -257,6 +260,115 @@ export async function getTeams(): Promise<{ teams: Team[] }> {
   return {
     teams: [...teamMap.values()].sort((a, b) => a.team_name.localeCompare(b.team_name)),
   };
+}
+
+interface LocationRaw {
+  date: string;
+  driver_number: number;
+  x: number | null;
+  y: number | null;
+  z: number | null;
+}
+
+async function getLocation(
+  sessionKey: number,
+  params: { driverNumber?: number; dateGt?: string; dateLt?: string },
+): Promise<LocationRaw[]> {
+  const url = new URL(`${BASE}/location`);
+  url.searchParams.set("session_key", String(sessionKey));
+  if (params.driverNumber != null)
+    url.searchParams.set("driver_number", String(params.driverNumber));
+  if (params.dateGt) url.searchParams.set("date>", params.dateGt);
+  if (params.dateLt) url.searchParams.set("date<", params.dateLt);
+  const res = await fetch(url.toString(), { cache: "no-store" });
+  if (!res.ok) return [];
+  return (await res.json()) as LocationRaw[];
+}
+
+function addSeconds(iso: string, seconds: number): string {
+  const d = new Date(iso);
+  d.setUTCSeconds(d.getUTCSeconds() + seconds);
+  return d.toISOString();
+}
+
+export async function getTrackMap(): Promise<TrackMap | null> {
+  const session = await getLatestSession();
+  if (!session) return null;
+  const outline = await memo<TrackOutline | null>(`openf1:track:outline:${session.session_key}`, 86400, async () => {
+    const { timing } = await getTiming();
+    const leader = timing[0]?.driver_number ?? null;
+    if (leader == null) return null;
+    let rows: LocationRaw[] = [];
+    for (const offsetMin of [20, 50, 5]) {
+      const start = addSeconds(session.date_start, offsetMin * 60);
+      const end = addSeconds(start, 110);
+      rows = await getLocation(session.session_key, {
+        driverNumber: leader,
+        dateGt: start,
+        dateLt: end,
+      });
+      if (rows.length > 50) break;
+    }
+    const pts: Array<[number, number]> = [];
+    for (const r of rows) {
+      if (r.x != null && r.y != null) pts.push([r.x, r.y]);
+    }
+    if (pts.length > 200) {
+      const step = Math.max(1, Math.floor(pts.length / 200));
+      const sampled: Array<[number, number]> = [];
+      for (let i = 0; i < pts.length; i += step) sampled.push(pts[i]);
+      pts.splice(0, pts.length, ...sampled);
+    }
+    if (!pts.length) return null;
+    const xs = pts.map((p) => p[0]);
+    const ys = pts.map((p) => p[1]);
+    return {
+      session_key: session.session_key,
+      driver_number: leader,
+      points: pts,
+      bounds: {
+        min_x: Math.min(...xs),
+        max_x: Math.max(...xs),
+        min_y: Math.min(...ys),
+        max_y: Math.max(...ys),
+      },
+    };
+  });
+  if (!outline) return null;
+
+  const positions = await memo<TrackPosition[]>(`openf1:track:positions:${session.session_key}`, 5, async () => {
+    const end = session.date_end ?? session.date_start;
+    const start = addSeconds(end, -15);
+    const rows = await getLocation(session.session_key, { dateGt: start, dateLt: end });
+    const latest = new Map<number, LocationRaw>();
+    for (const r of rows) {
+      if (r.x == null || r.y == null) continue;
+      const prev = latest.get(r.driver_number);
+      if (!prev || r.date > prev.date) latest.set(r.driver_number, r);
+    }
+    const { drivers } = await loadRawForSession(session.session_key);
+    const driverMap = new Map(drivers.map((d) => [d.driver_number, d]));
+    const { timing } = await getTiming();
+    const timingByNum = new Map(timing.map((t) => [t.driver_number, t]));
+    const out: TrackPosition[] = [];
+    for (const [dn, r] of latest.entries()) {
+      const info = driverMap.get(dn);
+      const t = timingByNum.get(dn);
+      out.push({
+        driver_number: dn,
+        x: r.x!,
+        y: r.y!,
+        team_colour: info?.team_colour ?? null,
+        name_acronym: info?.name_acronym ?? null,
+        full_name: info?.full_name ?? null,
+        position: t?.position ?? null,
+      });
+    }
+    out.sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+    return out;
+  });
+
+  return { session_key: session.session_key, outline, positions };
 }
 
 export async function getTelemetry(driverNumber: number): Promise<TelemetryFrame> {

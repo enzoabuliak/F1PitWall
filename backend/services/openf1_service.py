@@ -106,6 +106,22 @@ class OpenF1Service:
     async def get_stints(self, session_key: int) -> List[Dict[str, Any]]:
         return await self._get("/stints", params={"session_key": session_key})
 
+    async def get_location(
+        self,
+        session_key: int,
+        driver_number: Optional[int] = None,
+        date_gt: Optional[str] = None,
+        date_lt: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        params: Dict[str, Any] = {"session_key": session_key}
+        if driver_number is not None:
+            params["driver_number"] = driver_number
+        if date_gt is not None:
+            params["date>"] = date_gt
+        if date_lt is not None:
+            params["date<"] = date_lt
+        return await self._get("/location", params=params)
+
     async def _refresh_session(self) -> None:
         session = await self.get_latest_session()
         if not session:
