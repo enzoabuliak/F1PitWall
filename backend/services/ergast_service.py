@@ -109,7 +109,8 @@ class ErgastService:
             if len(rows) < 100:
                 break
         years.sort(reverse=True)
-        await self.cache.set(cache_key, years, 86400)
+        if years:
+            await self.cache.set(cache_key, years, 86400)
         return years
 
     async def season_winners(self, year: int) -> List[Dict[str, Any]]:

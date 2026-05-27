@@ -9,6 +9,9 @@ import type {
 } from "../types";
 import { memo } from "./cache";
 
+const nonEmpty = (v: { length: number } | null | undefined) =>
+  !!v && v.length > 0;
+
 function parseQTime(s: string | null | undefined): number | null {
   if (!s) return null;
   try {
@@ -45,7 +48,10 @@ interface ErgastResponse<TKey extends string, TVal> {
 }
 
 export async function getDriverStandings(year: number): Promise<{ year: number; standings: DriverStanding[] }> {
-  return memo(`ergast:drivers:${year}`, 600, async () => {
+  return memo(
+    `ergast:drivers:${year}`,
+    600,
+    async () => {
     const data = await get<ErgastResponse<"StandingsTable", { StandingsLists: Array<{ DriverStandings: Array<Record<string, unknown>> }> }>>(
       `/${year}/driverStandings`,
     );
@@ -65,11 +71,16 @@ export async function getDriverStandings(year: number): Promise<{ year: number; 
       };
     });
     return { year, standings };
-  });
+  },
+  { shouldCache: (r) => nonEmpty(r.standings) },
+  );
 }
 
 export async function getConstructorStandings(year: number): Promise<{ year: number; standings: ConstructorStanding[] }> {
-  return memo(`ergast:constructors:${year}`, 600, async () => {
+  return memo(
+    `ergast:constructors:${year}`,
+    600,
+    async () => {
     const data = await get<ErgastResponse<"StandingsTable", { StandingsLists: Array<{ ConstructorStandings: Array<Record<string, unknown>> }> }>>(
       `/${year}/constructorStandings`,
     );
@@ -86,11 +97,16 @@ export async function getConstructorStandings(year: number): Promise<{ year: num
       };
     });
     return { year, standings };
-  });
+  },
+  { shouldCache: (r) => nonEmpty(r.standings) },
+  );
 }
 
 export async function getSchedule(year: number): Promise<ScheduleResponse> {
-  return memo(`ergast:schedule:${year}`, 1800, async () => {
+  return memo(
+    `ergast:schedule:${year}`,
+    1800,
+    async () => {
     const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }>>(`/${year}`);
     const races = data?.MRData?.RaceTable?.Races ?? [];
     const schedule = races.map((r) => {
@@ -129,11 +145,16 @@ export async function getSchedule(year: number): Promise<ScheduleResponse> {
       if (r.race_start && r.race_start <= now) last_race = r;
     }
     return { year, now, schedule, next_race, last_race };
-  });
+  },
+  { shouldCache: (r) => nonEmpty(r.schedule) },
+  );
 }
 
 export async function getAvailableSeasons(): Promise<number[]> {
-  return memo("ergast:seasons", 86400, async () => {
+  return memo(
+    "ergast:seasons",
+    86400,
+    async () => {
     const years: number[] = [];
     for (const offset of [0, 100]) {
       const data = await get<ErgastResponse<"SeasonTable", { Seasons: Array<Record<string, string>> }>>(
@@ -148,11 +169,16 @@ export async function getAvailableSeasons(): Promise<number[]> {
     }
     years.sort((a, b) => b - a);
     return years;
-  });
+  },
+  { shouldCache: (r) => nonEmpty(r) },
+  );
 }
 
 export async function getSeasonWinners(year: number): Promise<SeasonWinner[]> {
-  return memo(`ergast:winners:${year}`, 3600, async () => {
+  return memo(
+    `ergast:winners:${year}`,
+    3600,
+    async () => {
     const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }>>(
       `/${year}/results/1?limit=100`,
     );
@@ -179,11 +205,16 @@ export async function getSeasonWinners(year: number): Promise<SeasonWinner[]> {
     });
     rows.sort((a, b) => a.round - b.round);
     return rows;
-  });
+  },
+  { shouldCache: (r) => nonEmpty(r) },
+  );
 }
 
 export async function getAllSeasonResults(year: number): Promise<SeasonRoundResults[]> {
-  return memo(`ergast:allresults:${year}`, 3600, async () => {
+  return memo(
+    `ergast:allresults:${year}`,
+    3600,
+    async () => {
     // Ergast caps `limit` at 100, so we paginate and merge by round.
     const racesByRound = new Map<number, Record<string, unknown>>();
     let offset = 0;
@@ -241,11 +272,16 @@ export async function getAllSeasonResults(year: number): Promise<SeasonRoundResu
     });
     rounds.sort((a, b) => a.round - b.round);
     return rounds;
-  });
+  },
+  { shouldCache: (r) => nonEmpty(r) },
+  );
 }
 
 export async function getLastQualifying(year: number): Promise<QualifyingSession | null> {
-  return memo(`ergast:lastquali:${year}`, 3600, async () => {
+  return memo(
+    `ergast:lastquali:${year}`,
+    3600,
+    async () => {
     const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }>>(
       `/${year}/last/qualifying`,
     );
@@ -282,11 +318,16 @@ export async function getLastQualifying(year: number): Promise<QualifyingSession
       date: (race.date as string) ?? null,
       results,
     };
-  });
+  },
+  { shouldCache: (r) => !!r && r.results.length > 0 },
+  );
 }
 
 export async function getLastRace(year: number): Promise<LastRaceResults | null> {
-  return memo(`ergast:lastrace:${year}`, 3600, async () => {
+  return memo(
+    `ergast:lastrace:${year}`,
+    3600,
+    async () => {
     const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }>>(
       `/${year}/last/results`,
     );
@@ -317,5 +358,7 @@ export async function getLastRace(year: number): Promise<LastRaceResults | null>
       date: (race.date as string) ?? null,
       results,
     };
-  });
+  },
+  { shouldCache: (r) => !!r && r.results.length > 0 },
+  );
 }
