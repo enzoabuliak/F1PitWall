@@ -2,9 +2,23 @@ import type {
   ConstructorStanding,
   DriverStanding,
   LastRaceResults,
+  QualifyingSession,
   ScheduleResponse,
 } from "../types";
 import { memo } from "./cache";
+
+function parseQTime(s: string | null | undefined): number | null {
+  if (!s) return null;
+  try {
+    if (s.includes(":")) {
+      const [m, rest] = s.split(":");
+      return parseInt(m, 10) * 60 + parseFloat(rest);
+    }
+    return parseFloat(s);
+  } catch {
+    return null;
+  }
+}
 
 const BASE = "https://api.jolpi.ca/ergast/f1";
 
@@ -113,6 +127,47 @@ export async function getSchedule(year: number): Promise<ScheduleResponse> {
       if (r.race_start && r.race_start <= now) last_race = r;
     }
     return { year, now, schedule, next_race, last_race };
+  });
+}
+
+export async function getLastQualifying(year: number): Promise<QualifyingSession | null> {
+  return memo(`ergast:lastquali:${year}`, 3600, async () => {
+    const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }>>(
+      `/${year}/last/qualifying`,
+    );
+    const races = data?.MRData?.RaceTable?.Races ?? [];
+    if (!races.length) return null;
+    const race = races[0];
+    const circuit = (race.Circuit ?? {}) as Record<string, unknown>;
+    const location = (circuit.Location ?? {}) as Record<string, string>;
+    const raw = (race.QualifyingResults ?? []) as Array<Record<string, unknown>>;
+    const results = raw.map((r) => {
+      const driver = (r.Driver ?? {}) as Record<string, string>;
+      const constructor = (r.Constructor ?? {}) as Record<string, string>;
+      const q1 = (r.Q1 as string) ?? null;
+      const q2 = (r.Q2 as string) ?? null;
+      const q3 = (r.Q3 as string) ?? null;
+      return {
+        position: parseInt(String(r.position ?? 0), 10),
+        driver_code: driver.code ?? null,
+        driver_number: driver.permanentNumber ? parseInt(driver.permanentNumber, 10) : null,
+        full_name: `${driver.givenName ?? ""} ${driver.familyName ?? ""}`.trim(),
+        team_name: constructor.name ?? null,
+        q1,
+        q2,
+        q3,
+        q1_seconds: parseQTime(q1),
+        q2_seconds: parseQTime(q2),
+        q3_seconds: parseQTime(q3),
+      };
+    });
+    return {
+      race_name: (race.raceName as string) ?? "",
+      circuit: (circuit.circuitName as string) ?? null,
+      country: location.country ?? null,
+      date: (race.date as string) ?? null,
+      results,
+    };
   });
 }
 

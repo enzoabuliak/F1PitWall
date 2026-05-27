@@ -44,6 +44,17 @@ async def last_race(request: Request, year: Optional[int] = None):
     return result
 
 
+@router.get("/last-qualifying")
+async def last_qualifying(request: Request, year: Optional[int] = None):
+    if year is None:
+        race_state = await request.app.state.cache.get("race:state") or {}
+        year = race_state.get("year") or datetime.now(timezone.utc).year
+    result = await request.app.state.ergast.last_qualifying(year)
+    if not result:
+        raise HTTPException(status_code=404, detail="No qualifying available")
+    return result
+
+
 @router.get("/schedule")
 async def schedule(request: Request, year: Optional[int] = None):
     if year is None:

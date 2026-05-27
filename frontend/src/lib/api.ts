@@ -3,6 +3,7 @@ import type {
   DriverPosition,
   DriverStanding,
   LastRaceResults,
+  QualifyingSession,
   RaceState,
   ScheduleResponse,
   StrategyResponse,
@@ -88,6 +89,15 @@ export async function fetchTrackMap(): Promise<TrackMap | null> {
   if (USE_STATIC) return openf1.getTrackMap();
   try {
     return await getJSON<TrackMap>("/api/track/map");
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchLastQualifying(): Promise<QualifyingSession | null> {
+  if (USE_STATIC) return ergast.getLastQualifying(await currentYear());
+  try {
+    return await getJSON<QualifyingSession>("/api/championship/last-qualifying");
   } catch {
     return null;
   }

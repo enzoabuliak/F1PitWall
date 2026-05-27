@@ -11,6 +11,7 @@ const NAV = [
   { href: "/race", label: "Race" },
   { href: "/track", label: "Track" },
   { href: "/strategy", label: "Strategy" },
+  { href: "/qualifying", label: "Quali" },
   { href: "/telemetry", label: "Telemetry" },
   { href: "/team", label: "Team" },
   { href: "/compare", label: "Compare" },

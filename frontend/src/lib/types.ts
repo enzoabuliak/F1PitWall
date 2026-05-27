@@ -177,6 +177,28 @@ export interface StrategyResponse {
   drivers: DriverStrategy[];
 }
 
+export interface QualifyingResult {
+  position: number;
+  driver_code: string | null;
+  driver_number: number | null;
+  full_name: string;
+  team_name: string | null;
+  q1: string | null;
+  q2: string | null;
+  q3: string | null;
+  q1_seconds: number | null;
+  q2_seconds: number | null;
+  q3_seconds: number | null;
+}
+
+export interface QualifyingSession {
+  race_name: string;
+  circuit: string | null;
+  country: string | null;
+  date: string | null;
+  results: QualifyingResult[];
+}
+
 export interface TelemetryFrame {
   driver_number: number;
   timestamp: number;
