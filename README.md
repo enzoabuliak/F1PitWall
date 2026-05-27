@@ -1,5 +1,7 @@
 # F1 Pit Wall · Engineering Dashboard
 
+**Live site:** <https://enzoabuliak.github.io/F1PitWall/>
+
 A real-time Formula 1 race engineering dashboard inspired by the Ferrari pit wall.
 Pulls **real F1 data** from OpenF1 (live timing + telemetry) and the Ergast/Jolpica
 mirror (driver & constructor championships).
@@ -53,6 +55,20 @@ State is split across four Zustand stores: `raceStore`, `timingStore`,
 `telemetryStore` (per-driver circular buffer, 60 frames), `uiStore`.
 
 ## Running
+
+The dashboard runs in two modes:
+
+**Static mode** — the live site at `enzoabuliak.github.io/F1PitWall` runs
+entirely in the browser. The Next.js app calls OpenF1 and Ergast directly
+(both serve CORS-open APIs) so no backend is needed. The static export is
+built by `.github/workflows/deploy.yml` whenever `frontend/**` changes on
+`main`.
+
+**Dev mode** — a local FastAPI backend with proper caching, WebSocket
+streaming, and stronger rate-limit handling. Used during development and
+recommended for live races.
+
+To run the dev backend:
 
 ### Backend
 
