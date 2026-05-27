@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { fetchRaceState, fetchTiming, WS_URL } from "@/lib/api";
+import { fetchRaceState, fetchTiming, USE_STATIC, WS_URL } from "@/lib/api";
 import { useRaceStore } from "@/stores/raceStore";
 import { useTimingStore } from "@/stores/timingStore";
 
@@ -68,7 +68,11 @@ export function useLiveData() {
     }
 
     pollOnce();
-    connectWS();
+    if (USE_STATIC) {
+      startPolling();
+    } else {
+      connectWS();
+    }
 
     return () => {
       cancelled = true;

@@ -1,0 +1,152 @@
+import type {
+  ConstructorStanding,
+  DriverStanding,
+  LastRaceResults,
+  ScheduleResponse,
+} from "../types";
+import { memo } from "./cache";
+
+const BASE = "https://api.jolpi.ca/ergast/f1";
+
+async function get<T>(path: string): Promise<T | null> {
+  try {
+    const res = await fetch(`${BASE}${path}.json`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+function combineDateTime(date?: string | null, time?: string | null): string | null {
+  if (!date) return null;
+  if (!time) return `${date}T00:00:00Z`;
+  return `${date}T${time}`;
+}
+
+interface ErgastResponse<TKey extends string, TVal> {
+  MRData: { [K in TKey]: TVal };
+}
+
+export async function getDriverStandings(year: number): Promise<{ year: number; standings: DriverStanding[] }> {
+  return memo(`ergast:drivers:${year}`, 600, async () => {
+    const data = await get<ErgastResponse<"StandingsTable", { StandingsLists: Array<{ DriverStandings: Array<Record<string, unknown>> }> }>>(
+      `/${year}/driverStandings`,
+    );
+    const lists = data?.MRData?.StandingsTable?.StandingsLists;
+    if (!lists?.length) return { year, standings: [] };
+    const standings: DriverStanding[] = lists[0].DriverStandings.map((r) => {
+      const driver = (r.Driver ?? {}) as Record<string, string>;
+      const constructors = (r.Constructors ?? []) as Array<Record<string, string>>;
+      return {
+        position: parseInt(String(r.position ?? 0), 10),
+        driver_code: driver.code ?? null,
+        driver_number: driver.permanentNumber ? parseInt(driver.permanentNumber, 10) : null,
+        full_name: `${driver.givenName ?? ""} ${driver.familyName ?? ""}`.trim(),
+        team_name: constructors[0]?.name ?? null,
+        points: parseFloat(String(r.points ?? 0)),
+        wins: parseInt(String(r.wins ?? 0), 10),
+      };
+    });
+    return { year, standings };
+  });
+}
+
+export async function getConstructorStandings(year: number): Promise<{ year: number; standings: ConstructorStanding[] }> {
+  return memo(`ergast:constructors:${year}`, 600, async () => {
+    const data = await get<ErgastResponse<"StandingsTable", { StandingsLists: Array<{ ConstructorStandings: Array<Record<string, unknown>> }> }>>(
+      `/${year}/constructorStandings`,
+    );
+    const lists = data?.MRData?.StandingsTable?.StandingsLists;
+    if (!lists?.length) return { year, standings: [] };
+    const standings: ConstructorStanding[] = lists[0].ConstructorStandings.map((r) => {
+      const constructor = (r.Constructor ?? {}) as Record<string, string>;
+      return {
+        position: parseInt(String(r.position ?? 0), 10),
+        team_name: constructor.name ?? "",
+        nationality: constructor.nationality ?? null,
+        points: parseFloat(String(r.points ?? 0)),
+        wins: parseInt(String(r.wins ?? 0), 10),
+      };
+    });
+    return { year, standings };
+  });
+}
+
+export async function getSchedule(year: number): Promise<ScheduleResponse> {
+  return memo(`ergast:schedule:${year}`, 1800, async () => {
+    const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }>>(`/${year}`);
+    const races = data?.MRData?.RaceTable?.Races ?? [];
+    const schedule = races.map((r) => {
+      const circuit = (r.Circuit ?? {}) as Record<string, unknown>;
+      const location = (circuit.Location ?? {}) as Record<string, string>;
+      const fp1 = r.FirstPractice as Record<string, string> | undefined;
+      const fp2 = r.SecondPractice as Record<string, string> | undefined;
+      const fp3 = r.ThirdPractice as Record<string, string> | undefined;
+      const quali = r.Qualifying as Record<string, string> | undefined;
+      const sprint = r.Sprint as Record<string, string> | undefined;
+      const sessions = {
+        fp1: combineDateTime(fp1?.date, fp1?.time),
+        fp2: combineDateTime(fp2?.date, fp2?.time),
+        fp3: combineDateTime(fp3?.date, fp3?.time),
+        qualifying: combineDateTime(quali?.date, quali?.time),
+        sprint: combineDateTime(sprint?.date, sprint?.time),
+        race: combineDateTime(r.date as string | undefined, r.time as string | undefined),
+      };
+      return {
+        round: parseInt(String(r.round ?? 0), 10),
+        race_name: (r.raceName as string) ?? "",
+        circuit_name: (circuit.circuitName as string) ?? null,
+        circuit_id: (circuit.circuitId as string) ?? null,
+        country: location.country ?? null,
+        locality: location.locality ?? null,
+        date: (r.date as string) ?? null,
+        time: (r.time as string) ?? null,
+        race_start: sessions.race,
+        sessions,
+      };
+    });
+    const now = new Date().toISOString();
+    const next_race = schedule.find((r) => r.race_start && r.race_start > now) ?? null;
+    let last_race: typeof schedule[number] | null = null;
+    for (const r of schedule) {
+      if (r.race_start && r.race_start <= now) last_race = r;
+    }
+    return { year, now, schedule, next_race, last_race };
+  });
+}
+
+export async function getLastRace(year: number): Promise<LastRaceResults | null> {
+  return memo(`ergast:lastrace:${year}`, 3600, async () => {
+    const data = await get<ErgastResponse<"RaceTable", { Races: Array<Record<string, unknown>> }>>(
+      `/${year}/last/results`,
+    );
+    const races = data?.MRData?.RaceTable?.Races ?? [];
+    if (!races.length) return null;
+    const race = races[0];
+    const circuit = (race.Circuit ?? {}) as Record<string, unknown>;
+    const location = (circuit.Location ?? {}) as Record<string, string>;
+    const rawResults = (race.Results ?? []) as Array<Record<string, unknown>>;
+    const results = rawResults.map((r) => {
+      const driver = (r.Driver ?? {}) as Record<string, string>;
+      const constructor = (r.Constructor ?? {}) as Record<string, string>;
+      const timeObj = (r.Time ?? {}) as Record<string, string>;
+      return {
+        position: parseInt(String(r.position ?? 0), 10),
+        driver_code: driver.code ?? null,
+        full_name: `${driver.givenName ?? ""} ${driver.familyName ?? ""}`.trim(),
+        team_name: constructor.name ?? null,
+        points: parseFloat(String(r.points ?? 0)),
+        status: (r.status as string) ?? null,
+        time: timeObj.time ?? null,
+      };
+    });
+    return {
+      race_name: (race.raceName as string) ?? "",
+      circuit: (circuit.circuitName as string) ?? null,
+      country: location.country ?? null,
+      date: (race.date as string) ?? null,
+      results,
+    };
+  });
+}
