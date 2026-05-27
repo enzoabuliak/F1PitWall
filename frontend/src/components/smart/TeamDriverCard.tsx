@@ -2,6 +2,7 @@
 
 import { useTelemetryPolling } from "@/hooks/useTelemetryPolling";
 import { useTelemetryStore } from "@/stores/telemetryStore";
+import { DriverAvatar } from "@/components/atoms/DriverAvatar";
 import type { DriverStanding, TeamDriver } from "@/lib/types";
 import { TelemetryGraph, GearDrsPanel } from "./TelemetryGraph";
 
@@ -30,11 +31,17 @@ export function TeamDriverCard({ driver, teamColour, standing }: Props) {
         className="flex items-center gap-3 px-4 py-3 border-b border-white/10"
         style={{ boxShadow: `inset 3px 0 0 ${colour}` }}
       >
-        <div className="flex flex-col">
+        <DriverAvatar
+          url={driver.headshot_url}
+          acronym={driver.name_acronym ?? driver.full_name?.split(" ").pop()?.slice(0, 3).toUpperCase()}
+          teamColour={teamColour}
+          size={48}
+        />
+        <div className="flex flex-col min-w-0">
           <div className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-mono">
             #{driver.driver_number} · {driver.name_acronym ?? "?"}
           </div>
-          <div className="text-sm font-bold text-white">
+          <div className="text-sm font-bold text-white truncate">
             {driver.full_name ?? "Unknown"}
           </div>
         </div>

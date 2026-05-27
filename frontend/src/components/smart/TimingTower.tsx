@@ -7,6 +7,7 @@ import { useUIStore } from "@/stores/uiStore";
 import { useDrs } from "@/hooks/useDrs";
 import { TimingNumber } from "@/components/atoms/TimingNumber";
 import { TireCompound } from "@/components/atoms/TireCompound";
+import { DriverAvatar } from "@/components/atoms/DriverAvatar";
 import { cn } from "@/lib/cn";
 import type { DriverPosition, DrsResponse } from "@/lib/types";
 
@@ -53,7 +54,7 @@ export function TimingTower() {
 
   return (
     <div className="overflow-x-auto -mx-1 px-1">
-      <div className="min-w-[700px] space-y-1">
+      <div className="min-w-[740px] space-y-1">
         <div className={cn("grid gap-2 px-3 pb-1 text-[9px] uppercase tracking-[0.18em] text-neutral-500 font-mono", "grid-cols-[28px_44px_1fr_70px_36px_42px_60px_60px_60px_70px]")}>
           <span>P</span>
           <span>#</span>
@@ -119,6 +120,12 @@ function TimingRow({
         <span
           className="h-5 w-1 rounded-full shrink-0"
           style={{ backgroundColor: teamColor, boxShadow: `0 0 6px ${teamColor}` }}
+        />
+        <DriverAvatar
+          url={driver.headshot_url}
+          acronym={driver.name_acronym ?? driver.full_name?.split(" ").pop()?.slice(0, 3).toUpperCase()}
+          teamColour={driver.team_colour}
+          size={26}
         />
         <span className="truncate text-sm font-medium text-white">
           {driver.full_name ?? `Driver ${driver.driver_number}`}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchLastRace, fetchSchedule } from "@/lib/api";
 import type { LastRaceResults, ScheduleResponse } from "@/lib/types";
 
@@ -11,6 +11,10 @@ interface ScheduleData {
   error: string | null;
 }
 
+const FAST_RETRY_MS = 4000;
+const STEADY_REFRESH_MS = 300_000;
+const FAST_RETRY_MAX = 12; // ~48s of fast retries before backing off
+
 export function useSchedule(): ScheduleData {
   const [data, setData] = useState<ScheduleData>({
     schedule: null,
@@ -18,6 +22,8 @@ export function useSchedule(): ScheduleData {
     loading: true,
     error: null,
   });
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retriesRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,22 +35,45 @@ export function useSchedule(): ScheduleData {
           fetchLastRace().catch(() => null),
         ]);
         if (cancelled) return;
-        setData({ schedule: s, lastRace: lr, loading: false, error: null });
+        const hasSchedule = !!s && Array.isArray(s.schedule) && s.schedule.length > 0;
+        setData({
+          schedule: s,
+          lastRace: lr,
+          loading: !hasSchedule,
+          error: hasSchedule ? null : "no schedule",
+        });
+        schedule(hasSchedule);
       } catch (e) {
-        if (!cancelled)
-          setData((s) => ({
-            ...s,
-            loading: false,
-            error: e instanceof Error ? e.message : "failed",
-          }));
+        if (cancelled) return;
+        setData((prev) => ({
+          ...prev,
+          loading: !prev.schedule,
+          error: e instanceof Error ? e.message : "failed",
+        }));
+        schedule(false);
       }
     }
 
+    function schedule(haveData: boolean) {
+      if (cancelled) return;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      let delay: number;
+      if (haveData) {
+        retriesRef.current = 0;
+        delay = STEADY_REFRESH_MS;
+      } else if (retriesRef.current < FAST_RETRY_MAX) {
+        retriesRef.current += 1;
+        delay = FAST_RETRY_MS;
+      } else {
+        delay = STEADY_REFRESH_MS;
+      }
+      timerRef.current = setTimeout(load, delay);
+    }
+
     load();
-    const id = setInterval(load, 300_000);
     return () => {
       cancelled = true;
-      clearInterval(id);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
 

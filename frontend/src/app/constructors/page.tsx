@@ -11,6 +11,7 @@ import { SessionHeader } from "@/components/smart/SessionHeader";
 import { Panel } from "@/components/atoms/Panel";
 import { SeasonPicker } from "@/components/smart/SeasonPicker";
 import { PointsProgressionChart } from "@/components/smart/PointsProgressionChart";
+import { PitStopRankings } from "@/components/smart/PitStopRankings";
 import { teamColorOrLive } from "@/lib/teamColors";
 import type {
   ConstructorStanding,
@@ -212,6 +213,13 @@ export default function ConstructorsPage() {
         </div>
 
         <div className="space-y-4">
+          <Panel title="Pit-stop counts (latest race)">
+            <PitStopRankings />
+            <p className="mt-3 text-[10px] uppercase tracking-[0.2em] text-neutral-600 font-mono">
+              Stops per team · average per driver
+            </p>
+          </Panel>
+
           <Panel title="Season summary">
             <dl className="grid grid-cols-2 gap-2 text-sm">
               <Stat label="Rounds run" value={String(totalRounds)} />

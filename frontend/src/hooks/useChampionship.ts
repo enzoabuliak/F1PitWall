@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   fetchConstructorStandings,
   fetchDriverStandings,
@@ -20,6 +20,10 @@ interface ChampionshipData {
   loading: boolean;
 }
 
+const FAST_RETRY_MS = 4000;
+const STEADY_REFRESH_MS = 60_000;
+const FAST_RETRY_MAX = 12;
+
 export function useChampionship(): ChampionshipData {
   const [data, setData] = useState<ChampionshipData>({
     teams: [],
@@ -28,6 +32,8 @@ export function useChampionship(): ChampionshipData {
     year: null,
     loading: true,
   });
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retriesRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,23 +46,43 @@ export function useChampionship(): ChampionshipData {
           fetchConstructorStandings(),
         ]);
         if (cancelled) return;
+        const hasData = d.standings.length > 0 || c.standings.length > 0;
         setData({
           teams: t.teams,
           drivers: d.standings,
           constructors: c.standings,
-          year: d.year,
-          loading: false,
+          year: d.year ?? c.year ?? null,
+          loading: !hasData,
         });
+        schedule(hasData);
       } catch {
-        if (!cancelled) setData((s) => ({ ...s, loading: false }));
+        if (!cancelled) {
+          setData((s) => ({ ...s, loading: !s.drivers.length && !s.constructors.length }));
+          schedule(false);
+        }
       }
     }
 
+    function schedule(haveData: boolean) {
+      if (cancelled) return;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      let delay: number;
+      if (haveData) {
+        retriesRef.current = 0;
+        delay = STEADY_REFRESH_MS;
+      } else if (retriesRef.current < FAST_RETRY_MAX) {
+        retriesRef.current += 1;
+        delay = FAST_RETRY_MS;
+      } else {
+        delay = STEADY_REFRESH_MS;
+      }
+      timerRef.current = setTimeout(load, delay);
+    }
+
     load();
-    const id = setInterval(load, 60_000);
     return () => {
       cancelled = true;
-      clearInterval(id);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
 

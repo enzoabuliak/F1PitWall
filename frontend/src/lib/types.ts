@@ -16,6 +16,9 @@ export interface DriverPosition {
   tire_compound: "SOFT" | "MEDIUM" | "HARD" | "INTERMEDIATE" | "WET" | string | null;
   tire_age: number | null;
   pit_stops?: number | null;
+  name_acronym?: string | null;
+  headshot_url?: string | null;
+  country_code?: string | null;
 }
 
 export interface Weather {
